@@ -5,12 +5,13 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // !! เพิ่มบรรทัดนี้เข้าไปเพื่อให้โหลด CSS ได้ครับ !!
+  basePath: '/sorasak-portfolio',
+  
   typescript: {
-    // !! สั่งให้ข้ามการแจ้งเตือน Error ของ TypeScript ตอน Build !!
     ignoreBuildErrors: true,
   },
   eslint: {
-    // !! สั่งให้ข้ามการแจ้งเตือน Error ของ ESLint ตอน Build !!
     ignoreDuringBuilds: true,
   },
 };
