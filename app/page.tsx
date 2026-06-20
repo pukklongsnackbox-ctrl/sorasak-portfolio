@@ -1158,7 +1158,7 @@ export default function PortfolioPage() {
                                 <button onClick={async () => {
                                     try {
                                         await setDoc(doc(db, "settings", "userProfile"), { phone: editPhone, email: editEmail }, { merge: true });
-                                        setProfileData(prev => ({...prev, phone: editPhone, email: editEmail}));
+                                        setProfileData((prev: any) => ({...prev, phone: editPhone, email: editEmail}));
                                         setIsEditingContact(false);
                                         alert("บันทึกข้อมูลติดต่อสำเร็จ!");
                                     } catch(e) { console.error(e); alert("เกิดข้อผิดพลาด"); }
