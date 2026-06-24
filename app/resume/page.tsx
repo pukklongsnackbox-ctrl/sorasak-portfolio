@@ -49,6 +49,7 @@ export default function ResumePage() {
   const [isCmsMode, setIsCmsMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [isWorksOpen, setIsWorksOpen] = useState(false);
   
   // State สำหรับดู Resume เต็มจอ (Dark Modal Preview)
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
@@ -281,16 +282,24 @@ export default function ResumePage() {
                     <div className="hidden md:flex space-x-6 lg:space-x-8 text-sm font-medium items-center">
                         <Link href="/" className="relative flex justify-center transition-colors text-gray-500 hover:text-gray-900">Home</Link>
 
-                        {/* 🌟 เมนู Works แบบ Dropdown */}
-                        <div className="relative group py-2">
-                            <button className="flex items-center gap-1 transition-colors text-gray-500 hover:text-gray-900">
-                                Works <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        {/* 🌟 เมนู Works แบบ Dropdown — click toggle รองรับ iPad/touch */}
+                        <div className="relative py-2">
+                            <button
+                                onClick={() => setIsWorksOpen(!isWorksOpen)}
+                                className="flex items-center gap-1 transition-colors text-gray-500 hover:text-gray-900"
+                            >
+                                Works <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${isWorksOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-40 bg-white border border-gray-100 shadow-xl rounded-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                                <Link href="/#projects" className="block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors">Projects</Link>
-                                <Link href="/#portfolio" className="block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors">Portfolio</Link>
-                                <Link href="/#certificates" className="block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors">Awards</Link>
-                            </div>
+                            {isWorksOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsWorksOpen(false)}/>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-40 bg-white border border-gray-100 shadow-xl rounded-2xl p-2 z-20">
+                                        <Link href="/#projects" onClick={() => setIsWorksOpen(false)} className="block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors">Projects</Link>
+                                        <Link href="/#portfolio" onClick={() => setIsWorksOpen(false)} className="block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors">Portfolio</Link>
+                                        <Link href="/#certificates" onClick={() => setIsWorksOpen(false)} className="block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors">Awards</Link>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <Link href="/about" className="relative flex justify-center transition-colors text-gray-500 hover:text-gray-900">About</Link>
@@ -481,14 +490,14 @@ export default function ResumePage() {
             {/* ขวา: Actions */}
             <div className="flex items-center gap-2 w-full lg:w-auto">
               {(viewMode === 'web' || viewMode === 'ats') && (
-                <button onClick={handleCopyText} className="flex items-center justify-center gap-1.5 bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 border border-gray-200 transition">
-                  {copySuccess ? <CheckCircle2 size={16} className="text-green-500"/> : <Copy size={16}/>} 
-                  <span className="hidden sm:inline">{copySuccess ? 'Copied' : 'Copy Text'}</span>
+                <button onClick={handleCopyText} className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 bg-gray-50 text-gray-700 px-4 py-3 rounded-xl font-bold text-sm hover:bg-gray-100 border border-gray-200 transition active:scale-95 touch-manipulation">
+                  {copySuccess ? <CheckCircle2 size={18} className="text-green-500"/> : <Copy size={18}/>} 
+                  {copySuccess ? 'Copied!' : 'Copy Text'}
                 </button>
               )}
               {viewMode !== 'none' && (
-                <button onClick={handleDownload} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 shadow-md transition">
-                  <Download size={16}/> {lang === 'th' ? 'ดาวน์โหลด' : 'Download'}
+                <button onClick={handleDownload} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 shadow-md transition active:scale-95 touch-manipulation">
+                  <Download size={18}/> {lang === 'th' ? 'ดาวน์โหลด' : 'Download'}
                 </button>
               )}
             </div>

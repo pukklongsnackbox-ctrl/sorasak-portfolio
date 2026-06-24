@@ -14,7 +14,8 @@ import {
   Edit3, Plus, Trash2, X, Save, Building, Palette, Monitor, Megaphone, 
   Target, Layout, Link as LinkIcon, 
   Eye, EyeOff, FolderOpen, Image as LucideImage, Maximize2, ArrowRight,
-  Loader, Send
+  Loader, Send,
+  BookOpen, Lightbulb, Music, Camera, Mic, Award, Heart, Zap, Flag, Coffee, Rocket, Shield, Clock, Search, MessageSquare
 } from 'lucide-react';
 
 // ==========================================
@@ -28,7 +29,8 @@ const YoutubeIcon = (props: any) => <svg {...props} viewBox="0 0 24 24" fill="cu
 const TwitterIcon = (props: any) => <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>;
 
 const categoryIcons: Record<string, any> = {
-  Star, Video, Sparkles, TrendingUp, Users, Building, Code, Database, Globe, Palette, Monitor, Megaphone, Target, Layout, Briefcase
+  Star, Video, Sparkles, TrendingUp, Users, Building, Code, Database, Globe, Palette, Monitor, Megaphone, Target, Layout, Briefcase,
+  BookOpen, Lightbulb, Music, Camera, Mic, Award, Heart, Zap, Flag, Coffee, Rocket, Shield, Clock, Search, MessageSquare
 };
 
 const socialIcons: Record<string, any> = {
@@ -63,12 +65,15 @@ const brandLogos = [
 ];
 
 const colorThemes: Record<string, any> = {
-  emerald: { name: 'เขียว', bg: 'bg-emerald-50/50', border: 'border-emerald-200', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
-  blue: { name: 'น้ำเงิน', bg: 'bg-blue-50/50', border: 'border-blue-200', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
-  purple: { name: 'ม่วง', bg: 'bg-purple-50/50', border: 'border-purple-200', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-700' },
-  amber: { name: 'เหลือง', bg: 'bg-amber-50/50', border: 'border-amber-200', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-700' },
-  pink: { name: 'ชมพู', bg: 'bg-pink-50/50', border: 'border-pink-200', text: 'text-pink-600', badge: 'bg-pink-100 text-pink-700' },
-  gray: { name: 'เทา', bg: 'bg-gray-50/50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-700' }
+  emerald: { name: 'เขียว', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+  blue: { name: 'น้ำเงิน', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
+  purple: { name: 'ม่วง', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
+  amber: { name: 'เหลือง', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-400' },
+  pink: { name: 'ชมพู', bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-600', badge: 'bg-pink-100 text-pink-700', dot: 'bg-pink-500' },
+  red: { name: 'แดง', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-600', badge: 'bg-red-100 text-red-700', dot: 'bg-red-500' },
+  orange: { name: 'ส้ม', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
+  teal: { name: 'เขียวน้ำ', bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-700', dot: 'bg-teal-500' },
+  gray: { name: 'เทา', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-700', dot: 'bg-gray-500' }
 };
 
 // ==========================================
@@ -77,6 +82,7 @@ const colorThemes: Record<string, any> = {
 const initialProfile = {
   fullName: 'สรศักดิ์ แย้มศรี',
   nickName: 'Sorasak Yamsri',
+  jobTitle: 'นิสิตและนักสร้างสรรค์ดิจิทัล',
   avatarUrl: '', 
   age: '22 ปี',
   phone: '08X-XXX-XXXX',
@@ -498,6 +504,7 @@ export default function AboutPage() {
                    <div><label className="block text-sm font-bold text-gray-700 mb-1">ชื่อ-นามสกุล *</label><input required type="text" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={profileForm.fullName} onChange={e => setProfileForm({...profileForm, fullName: e.target.value})} /></div>
                    <div><label className="block text-sm font-bold text-gray-700 mb-1">ตำแหน่ง / ชื่อเล่น</label><input type="text" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={profileForm.nickName} onChange={e => setProfileForm({...profileForm, nickName: e.target.value})} /></div>
                  </div>
+                 <div><label className="block text-sm font-bold text-gray-700 mb-1">ตำแหน่งงาน / คำอธิบายสั้นๆ (แสดงใน Resume)</label><input type="text" placeholder="เช่น นิสิตและนักสร้างสรรค์ดิจิทัล" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={profileForm.jobTitle || ''} onChange={e => setProfileForm({...profileForm, jobTitle: e.target.value})} /></div>
                  <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์รูปโปรไฟล์ (Avatar URL)</label><input type="url" placeholder="เว้นว่างไว้เพื่อใช้ไอคอนแทน" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={profileForm.avatarUrl || ''} onChange={e => setProfileForm({...profileForm, avatarUrl: e.target.value})} /></div>
                  <div className="grid grid-cols-2 gap-4">
                    <div><label className="block text-sm font-bold text-gray-700 mb-1">อายุ</label><input type="text" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={profileForm.age} onChange={e => setProfileForm({...profileForm, age: e.target.value})} /></div>
@@ -590,7 +597,7 @@ export default function AboutPage() {
               <form onSubmit={saveCategory} className="space-y-6">
                  <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-6">
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">ชื่อหมวดหมู่ทักษะ *</label><input required type="text" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={categoryForm.title} onChange={e => setCategoryForm({...categoryForm, title: e.target.value})} /></div>
-                  <div><label className="block text-sm font-bold text-gray-700 mb-2">เลือกสีธีม</label><div className="flex flex-wrap gap-3">{Object.entries(colorThemes).map(([colorKey, theme]) => (<button type="button" key={colorKey} onClick={() => setCategoryForm({...categoryForm, colorName: colorKey})} className={`w-10 h-10 rounded-full border-2 ${theme.bg} ${categoryForm.colorName === colorKey ? 'border-gray-900 scale-110 shadow-sm' : 'border-transparent'} transition-all`}>{categoryForm.colorName === colorKey && <CheckCircle2 size={16} className={theme.text} />}</button>))}</div></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">เลือกสีธีม</label><div className="flex flex-wrap gap-3">{Object.entries(colorThemes).map(([colorKey, theme]) => (<button type="button" key={colorKey} title={theme.name} onClick={() => setCategoryForm({...categoryForm, colorName: colorKey})} className={`w-10 h-10 rounded-full border-4 ${theme.dot} ${categoryForm.colorName === colorKey ? 'border-gray-900 scale-110 shadow-md ring-2 ring-gray-400' : 'border-white shadow-sm'} transition-all`}></button>))}</div></div>
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">เลือกไอคอน</label><div className="grid grid-cols-6 gap-2 bg-gray-50 p-4 rounded-xl border border-gray-200 max-h-48 overflow-y-auto">{Object.keys(categoryIcons).map((iconName) => { const IconComp = categoryIcons[iconName]; return (<button type="button" key={iconName} onClick={() => setCategoryForm({...categoryForm, iconName})} className={`p-3 rounded-lg border transition-all ${categoryForm.iconName === iconName ? 'bg-white border-blue-500 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'border-transparent text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}><IconComp size={24} /></button>); })}</div></div>
                  </div>
                 <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-full font-bold hover:bg-blue-700 shadow-sm transition-colors flex items-center justify-center gap-2"><Save size={18}/> บันทึกหมวดหมู่</button>
@@ -763,7 +770,7 @@ export default function AboutPage() {
                                 </div>
 
                                 {isEditingMode && (
-                                  <div className="absolute -top-3 -right-3 flex flex-col gap-1 opacity-0 group-hover/skill:opacity-100 bg-white border border-gray-200 p-1.5 rounded-lg shadow-lg transition-all z-10">
+                                  <div className="absolute -top-3 -right-3 flex flex-col gap-1 bg-white border border-gray-200 p-1.5 rounded-lg shadow-lg z-10">
                                     <button onClick={() => openSkillModal(category.id, skill)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md"><Edit3 size={14}/></button>
                                     <div className="h-px bg-gray-100 mx-1"></div>
                                     <button onClick={() => deleteSkill(category.id, skill.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md"><Trash2 size={14}/></button>
@@ -797,7 +804,15 @@ export default function AboutPage() {
                         <div key={sw.id} className="relative group bg-gray-50 border border-gray-100 shadow-sm p-5 rounded-xl flex flex-col items-center text-center hover:bg-white hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                           
                           <div className="w-14 h-14 sm:w-16 sm:h-16 mb-4 flex items-center justify-center p-1.5">
-                             {sw.logoUrl ? <img src={sw.logoUrl} alt={sw.name} className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-110 transition-transform duration-300" /> : <div className="w-full h-full bg-white border border-gray-100 rounded-lg flex items-center justify-center text-gray-400"><Monitor size={24}/></div>}
+                            {sw.logoUrl ? (
+                              <img
+                                src={sw.logoUrl}
+                                alt={sw.name}
+                                className="w-full h-full object-contain filter drop-shadow-sm transition-transform duration-300"
+                                onError={(e: any) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                              />
+                            ) : null}
+                            <div className={`w-full h-full bg-white border border-gray-100 rounded-lg items-center justify-center text-gray-400 ${sw.logoUrl ? 'hidden' : 'flex'}`} style={{display: sw.logoUrl ? 'none' : 'flex'}}><Monitor size={24}/></div>
                           </div>
                           <h5 className="font-bold text-gray-900 text-sm sm:text-base mb-2">{sw.name}</h5>
                           <span className={`text-[10px] sm:text-xs px-3 py-1 rounded-md font-bold ${levelColor} mb-4`}>{sw.level}</span>
@@ -809,7 +824,7 @@ export default function AboutPage() {
                           )}
 
                           {isEditingMode && (
-                            <div className="absolute -top-3 -right-3 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all bg-white border border-gray-200 p-1.5 rounded-lg shadow-lg z-10">
+                            <div className="absolute -top-3 -right-3 flex flex-col gap-1 bg-white border border-gray-200 p-1.5 rounded-lg shadow-lg z-10">
                               <button onClick={() => openSoftwareModal(sw)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md"><Edit3 size={14}/></button>
                               <div className="h-px bg-gray-100 mx-1"></div>
                               <button onClick={() => deleteSoftware(sw.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md"><Trash2 size={14}/></button>
