@@ -1035,9 +1035,9 @@ export default function PortfolioPage() {
                                 {(showAllShowcases ? showcases : showcases.slice(0, 3)).map(showcase => (
                                     <div key={showcase.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => setSelectedShowcase(showcase)}>
                                         {isAdmin && (
-                                            <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
-                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600"><Edit3 size={14}/></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                            <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
+                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
                                             </div>
                                         )}
                                         <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
@@ -1096,9 +1096,9 @@ export default function PortfolioPage() {
                                 {(showAllCerts ? certificates : certificates.slice(0, 3)).map(cert => (
                                     <div key={cert.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => setSelectedCert(cert)}>
                                         {isAdmin && (
-                                            <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
-                                                <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600"><Edit3 size={14}/></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                            <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
+                                                <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
                                             </div>
                                         )}
                                         <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
@@ -1222,7 +1222,11 @@ export default function PortfolioPage() {
                         <div className="w-full md:w-3/5 bg-[#fafafa] relative h-[50vh] md:h-auto flex items-center justify-center p-4 md:p-12">
                             {selectedProject.imageUrls?.length > 0 ? (
                                 <>
-                                    <img src={selectedProject.imageUrls[currentImageIndex]} className="w-full h-full object-contain drop-shadow-sm transition-opacity duration-500" />
+                                    <img
+                                        src={selectedProject.imageUrls[currentImageIndex]}
+                                        className="w-full h-full object-contain drop-shadow-sm transition-opacity duration-500 cursor-zoom-in"
+                                        onClick={() => setLightboxImage(selectedProject.imageUrls[currentImageIndex])}
+                                    />
                                     {selectedProject.imageUrls.length > 1 && (
                                         <>
                                             <button onClick={prevImage} className="absolute left-3 md:left-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❮</button>
@@ -1258,28 +1262,40 @@ export default function PortfolioPage() {
                     <div className="bg-[#fafafa] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative border border-gray-200">
                         <div className="sticky top-0 flex justify-between items-center p-6 border-b border-gray-200 bg-white z-10">
                             <div>
-                                <h3 className="font-bold text-gray-900 text-xl sm:text-2xl mb-1">รายละเอียดผลงาน</h3>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">รูปภาพผลงาน</p>
+                                <h3 className="font-bold text-gray-900 text-xl sm:text-2xl">{selectedShowcase.title}</h3>
                             </div>
-                            <button onClick={() => setSelectedShowcase(null)} className="text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors shrink-0"><X size={24}/></button>
+                            <button onClick={() => setSelectedShowcase(null)} className="text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2.5 rounded-full transition-colors shrink-0"><X size={24}/></button>
                         </div>
                         <div className="p-6 md:p-8 overflow-y-auto flex-1 bg-gray-50/50">
-                            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm mb-8">
+                            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm mb-6">
                                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{selectedShowcase.title}</h2>
                                 {selectedShowcase.desc && <p className="text-gray-600 leading-relaxed mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 whitespace-pre-line">{selectedShowcase.desc}</p>}
                                 {selectedShowcase.link && <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>}
                             </div>
-                            
-                            {selectedShowcase.imageUrl && (
-                                <>
-                                    <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพผลงาน</h3>
-                                    <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(selectedShowcase.imageUrl)}>
-                                        <img src={selectedShowcase.imageUrl} alt={selectedShowcase.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                            <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
+
+                            {/* แสดงรูปทุกรูป (imageUrls) ถ้ามี, fallback เป็น imageUrl */}
+                            {(() => {
+                                const allImages: string[] = selectedShowcase.imageUrls?.length > 0
+                                    ? selectedShowcase.imageUrls
+                                    : selectedShowcase.imageUrl ? [selectedShowcase.imageUrl] : [];
+                                if (allImages.length === 0) return null;
+                                return (
+                                    <>
+                                        <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพผลงาน ({allImages.length})</h3>
+                                        <div className={`grid gap-4 ${allImages.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                                            {allImages.map((url: string, idx: number) => (
+                                                <div key={idx} className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(url)}>
+                                                    <img src={url} alt={`${selectedShowcase.title}-${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                                                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
