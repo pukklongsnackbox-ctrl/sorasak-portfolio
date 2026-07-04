@@ -159,6 +159,7 @@ export default function AboutPage() {
   // View States
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [activePortfolio, setActivePortfolio] = useState<any | null>(null);
+  const [portfolioUploadingId, setPortfolioUploadingId] = useState<string | null>(null);
 
   // Data States
   const [profile, setProfile] = useState<any>(initialProfile);
@@ -195,7 +196,15 @@ export default function AboutPage() {
         const docSnap = await getDoc(doc(db, "settings", "aboutPageV2"));
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.profile) setProfile(data.profile);
+          if (data.profile) {
+            // merge กับ initialProfile เพื่อให้มี field ครบเสมอ
+            const mergedProfile = { ...initialProfile, ...data.profile };
+            // ถ้า socials จาก Firebase ไม่มี url field ให้ใช้ initialProfile แทน
+            if (!data.profile.socials || data.profile.socials.length === 0) {
+              mergedProfile.socials = initialProfile.socials;
+            }
+            setProfile(mergedProfile);
+          }
           if (data.categories) setCategories(data.categories);
           if (data.softwares) setSoftwares(data.softwares);
         } else {
@@ -296,6 +305,26 @@ export default function AboutPage() {
   };
 
   // --- Portfolio Array Management in Forms ---
+  const handlePortfolioImageUpload = async (formType: string, portId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setPortfolioUploadingId(portId);
+    try {
+      const uploaded = await Promise.all(Array.from(files).map(f => uploadToCloudinary(f)));
+      const urls = uploaded.filter(Boolean) as string[];
+      if (formType === 'skill') {
+        setSkillForm(prev => ({ ...prev, portfolios: prev.portfolios.map(p => p.id === portId ? { ...p, imageUrls: [...(p.imageUrls || []), ...urls] } : p) }));
+      }
+      if (formType === 'software') {
+        setSoftwareForm(prev => ({ ...prev, portfolios: prev.portfolios.map(p => p.id === portId ? { ...p, imageUrls: [...(p.imageUrls || []), ...urls] } : p) }));
+      }
+    } catch (e) { alert("อัปโหลดรูปไม่สำเร็จ"); } finally { setPortfolioUploadingId(null); }
+  };
+
+  const removePortfolioImage = (formType: string, portId: string, imgIdx: number) => {
+    if (formType === 'skill') setSkillForm(prev => ({ ...prev, portfolios: prev.portfolios.map(p => p.id === portId ? { ...p, imageUrls: p.imageUrls.filter((_: any, i: number) => i !== imgIdx) } : p) }));
+    if (formType === 'software') setSoftwareForm(prev => ({ ...prev, portfolios: prev.portfolios.map(p => p.id === portId ? { ...p, imageUrls: p.imageUrls.filter((_: any, i: number) => i !== imgIdx) } : p) }));
+  };
+
   const addPortfolioToForm = (formType: string) => {
     const newPort = { id: `p-${Date.now()}`, title: '', desc: '', imageUrls: [], link: '' };
     if (formType === 'skill') setSkillForm({ ...skillForm, portfolios: [...skillForm.portfolios, newPort] });
@@ -388,7 +417,26 @@ export default function AboutPage() {
       <button type="button" onClick={() => deletePortfolioFromForm(formType, port.id)} className="absolute top-3 right-3 text-red-400 hover:text-red-600 bg-red-50 p-1 rounded-md transition-colors"><Trash2 size={16}/></button>
       <div><label className="block text-xs font-bold text-gray-700 mb-1">ชื่อผลงาน *</label><input required type="text" placeholder="เช่น โปสเตอร์แคมเปญ" className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-gray-900 pr-10 outline-none" value={port.title} onChange={e => updatePortfolioInForm(formType, port.id, 'title', e.target.value)} /></div>
       <div><label className="block text-xs font-bold text-gray-700 mb-1">คำบรรยายผลงาน (Description)</label><textarea rows={2} placeholder="อธิบายรายละเอียดหรือผลลัพธ์ของงานนี้" className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-gray-900 outline-none" value={port.desc} onChange={e => updatePortfolioInForm(formType, port.id, 'desc', e.target.value)} /></div>
-      <div><label className="block text-xs font-bold text-gray-700 mb-1">ลิงก์รูปภาพ (1 ลิงก์ต่อ 1 บรรทัด, <span className="text-blue-500">บรรทัดแรกคือภาพปก</span>)</label><textarea rows={3} placeholder="https://image1.jpg&#10;https://image2.png" className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-gray-900 whitespace-pre outline-none" value={port.imageUrls ? port.imageUrls.join('\n') : ''} onChange={e => updatePortfolioInForm(formType, port.id, 'imageUrls', e.target.value.split('\n').filter((url:string) => url.trim() !== ''))} /></div>
+      
+      {/* อัปโหลดรูปภาพ */}
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-2">รูปภาพผลงาน (อัปโหลดได้หลายรูป)</label>
+        <label className={`flex items-center gap-2 cursor-pointer w-max px-4 py-2 rounded-lg border text-xs font-bold transition-colors ${portfolioUploadingId === port.id ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+          {portfolioUploadingId === port.id ? <><Loader size={14} className="animate-spin"/> กำลังอัปโหลด...</> : <><LucideImage size={14}/> เลือกรูปภาพ</>}
+          <input type="file" accept="image/*" multiple className="hidden" disabled={portfolioUploadingId === port.id} onChange={e => handlePortfolioImageUpload(formType, port.id, e.target.files)} />
+        </label>
+        {port.imageUrls && port.imageUrls.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {port.imageUrls.map((url: string, idx: number) => (
+              <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                <img src={url} alt={`img-${idx}`} className="w-full h-full object-cover" />
+                <button type="button" onClick={() => removePortfolioImage(formType, port.id, idx)} className="absolute inset-0 bg-red-500/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div><label className="block text-xs font-bold text-gray-700 mb-1">ลิงก์ผลงานภายนอก (External Link)</label><input type="url" placeholder="https://..." className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-gray-900 outline-none" value={port.link} onChange={e => updatePortfolioInForm(formType, port.id, 'link', e.target.value)} /></div>
     </div>
   );
@@ -457,9 +505,9 @@ export default function AboutPage() {
                   <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพในผลงาน ({activePortfolio.imageUrls ? activePortfolio.imageUrls.length : 0})</h3>
                   
                   {activePortfolio.imageUrls && activePortfolio.imageUrls.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className={`grid gap-4 ${activePortfolio.imageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
                       {activePortfolio.imageUrls.map((url:string, idx:number) => (
-                        <div key={idx} className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(url)}>
+                        <div key={idx} className="bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(url)}>
                           <img src={url} alt={`portfolio-${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e:any) => { e.target.onerror = null; e.target.src="https://placehold.co/600x400/f8fafc/94a3b8?text=Image+Not+Found" }} />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                             <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
@@ -545,7 +593,7 @@ export default function AboutPage() {
                   <div className="pt-2">
                     <div className="flex justify-between items-center mb-2">
                       <label className="block text-sm font-bold text-gray-700">เลือกโลโก้โปรแกรม</label>
-                      <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer"><input type="checkbox" checked={softwareForm.customLogo} onChange={(e) => setSoftwareForm({...softwareForm, customLogo: e.target.checked})} className="rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> ใส่ลิงก์รูปเอง</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer"><input type="checkbox" checked={softwareForm.customLogo} onChange={(e) => setSoftwareForm({...softwareForm, customLogo: e.target.checked, logoUrl: e.target.checked ? '' : brandLogos[0].url})} className="rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> อัปโหลดรูปเอง</label>
                     </div>
                     {!softwareForm.customLogo ? (
                       <div className="grid grid-cols-5 sm:grid-cols-7 gap-2 max-h-48 overflow-y-auto p-1">
@@ -555,7 +603,27 @@ export default function AboutPage() {
                           </button>
                         ))}
                       </div>
-                    ) : (<input type="url" placeholder="ลิงก์รูปภาพ (PNG/SVG/JPG)" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" value={softwareForm.logoUrl} onChange={e => setSoftwareForm({...softwareForm, logoUrl: e.target.value})} />)}
+                    ) : (
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-2 cursor-pointer w-max px-4 py-2.5 rounded-lg border text-sm font-bold bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 transition-colors">
+                          <LucideImage size={16}/> เลือกรูปโลโก้จากเครื่อง
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const f = e.target.files?.[0]; if (!f) return;
+                            const url = await uploadToCloudinary(f);
+                            if (url) setSoftwareForm({...softwareForm, logoUrl: url});
+                          }} />
+                        </label>
+                        {softwareForm.logoUrl && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <img src={softwareForm.logoUrl} alt="preview" className="w-12 h-12 object-contain rounded-lg border border-gray-200 bg-white p-1" onError={(e:any)=>{e.target.style.display='none'}}/>
+                            <div>
+                              <p className="text-xs font-bold text-gray-700">รูปโลโก้ที่เลือก</p>
+                              <button type="button" onClick={() => setSoftwareForm({...softwareForm, logoUrl: ''})} className="text-xs text-red-500 hover:underline mt-0.5">ลบออก</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -711,7 +779,9 @@ export default function AboutPage() {
                 
                 <div className="flex flex-wrap justify-center gap-3 border-t border-gray-100 pt-6">
                   {profile.socials.filter((s:any) => s.isVisible && s.url).map((social:any) => {
-                    const IconComp = socialIcons[social.icon] || LinkIcon;
+                    // ค้นหา icon แบบ case-insensitive
+                    const iconKey = Object.keys(socialIcons).find(k => k.toLowerCase() === (social.icon || '').toLowerCase()) || '';
+                    const IconComp = socialIcons[iconKey] || Globe;
                     return (<a key={social.id} href={social.url} target="_blank" rel="noreferrer" className="w-10 h-10 bg-gray-50 text-gray-600 hover:bg-blue-600 hover:text-white rounded-full flex items-center justify-center transition-all hover:-translate-y-1 shadow-sm border border-gray-200"><IconComp size={18} /></a>);
                   })}
                 </div>
