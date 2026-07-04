@@ -778,9 +778,9 @@ export default function AboutPage() {
                 </div>
                 
                 <div className="flex flex-wrap justify-center gap-3 border-t border-gray-100 pt-6">
-                  {profile.socials.filter((s:any) => s.isVisible && s.url).map((social:any) => {
-                    // ค้นหา icon แบบ case-insensitive
-                    const iconKey = Object.keys(socialIcons).find(k => k.toLowerCase() === (social.icon || '').toLowerCase()) || '';
+                  {profile.socials.filter((s:any) => s.isVisible !== false && s.url).map((social:any) => {
+                    const iconName = social.icon || social.platform || '';
+                    const iconKey = Object.keys(socialIcons).find(k => k.toLowerCase() === iconName.toLowerCase()) || '';
                     const IconComp = socialIcons[iconKey] || Globe;
                     return (<a key={social.id} href={social.url} target="_blank" rel="noreferrer" className="w-10 h-10 bg-gray-50 text-gray-600 hover:bg-blue-600 hover:text-white rounded-full flex items-center justify-center transition-all hover:-translate-y-1 shadow-sm border border-gray-200"><IconComp size={18} /></a>);
                   })}
