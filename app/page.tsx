@@ -1022,9 +1022,9 @@ export default function PortfolioPage() {
                                 {(showAllShowcases ? showcases : showcases.slice(0, 3)).map(showcase => (
                                     <div key={showcase.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => setSelectedShowcase(showcase)}>
                                         {isAdmin && (
-                                            <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
-                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600"><Edit3 size={14}/></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                            <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
+                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
                                             </div>
                                         )}
                                         <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
@@ -1083,9 +1083,9 @@ export default function PortfolioPage() {
                                 {(showAllCerts ? certificates : certificates.slice(0, 3)).map(cert => (
                                     <div key={cert.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => setSelectedCert(cert)}>
                                         {isAdmin && (
-                                            <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
-                                                <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600"><Edit3 size={14}/></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                            <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
+                                                <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
                                             </div>
                                         )}
                                         <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
