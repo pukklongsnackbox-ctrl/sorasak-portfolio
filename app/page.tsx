@@ -97,10 +97,8 @@ export default function PortfolioPage() {
     const [pTitle, setPTitle] = useState(''); const [pCategory, setPCategory] = useState('Event Management & Leadership');
     const [pDate, setPDate] = useState(''); const [pDesc, setPDesc] = useState('');
     const [pImpact, setPImpact] = useState(''); const [pTags, setPTags] = useState('');
-    const [pLink, setPLink] = useState('');
     const [pFiles, setPFiles] = useState<File[]>([]); const [pExistingImages, setPExistingImages] = useState<string[]>([]);
     const [pIsPublished, setPIsPublished] = useState(true);
-    const [projectSortOrder, setProjectSortOrder] = useState<'newest' | 'oldest'>('newest');
 
     // Certificate Modal State
     const [showCertModal, setShowCertModal] = useState(false);
@@ -108,7 +106,7 @@ export default function PortfolioPage() {
     const [cTitle, setCTitle] = useState('');
     const [cIssuer, setCIssuer] = useState('');
     const [cYear, setCYear] = useState('');
-    const [cFile, setCFile] = useState<File | null>(null);
+    const [cFiles, setCFiles] = useState<File[]>([]);
     const [cExistingImage, setCExistingImage] = useState('');
 
     // Showcase Modal State
@@ -117,7 +115,7 @@ export default function PortfolioPage() {
     const [sTitle, setSTitle] = useState('');
     const [sDesc, setSDesc] = useState('');
     const [sLink, setSLink] = useState('');
-    const [sFile, setSFile] = useState<File | null>(null);
+    const [sFiles, setSFiles] = useState<File[]>([]);
     const [sExistingImage, setSExistingImage] = useState('');
 
     // Secret Login State
@@ -128,6 +126,7 @@ export default function PortfolioPage() {
 
     // State สำหรับเปิดรูปใหญ่
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [isWorksOpen, setIsWorksOpen] = useState(false);
 
     // 🌟 ฟังก์ชันอัจฉริยะ (ScrollSpy) คอยตรวจสอบว่าเลื่อนหน้าจอไปถึงไหนแล้ว เพื่อให้เมนูด้านบนอัปเดตตาม
     useEffect(() => {
@@ -374,11 +373,10 @@ export default function PortfolioPage() {
         if (project) {
             setEditingProject(project); setPTitle(project.title); setPCategory(project.category); setPDate(project.date || '');
             setPDesc(project.description); setPImpact(project.impact || ''); setPTags(project.tags ? project.tags.join(', ') : '');
-            setPLink(project.link || '');
             setPExistingImages(project.imageUrls || []); setPIsPublished(project.isPublished !== false);
         } else {
             setEditingProject(null); setPTitle(''); setPCategory('องค์การนิสิต (Student Organization)'); setPDate('');
-            setPDesc(''); setPImpact(''); setPTags(''); setPLink(''); setPExistingImages([]); setPIsPublished(true);
+            setPDesc(''); setPImpact(''); setPTags(''); setPExistingImages([]); setPIsPublished(true);
         }
         setPFiles([]); setShowProjectModal(true);
     };
@@ -394,7 +392,7 @@ export default function PortfolioPage() {
                     if (url) finalImageUrls.push(url);
                 }
             }
-            const data = { title: pTitle, category: pCategory, date: pDate, description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished, link: pLink };
+            const data = { title: pTitle, category: pCategory, date: pDate, description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished };
             if (editingProject) {
                 await updateDoc(doc(db, "projects", editingProject.id), data);
                 setProjects(projects.map(p => p.id === editingProject.id ? { ...p, ...data } : p));
@@ -414,12 +412,18 @@ export default function PortfolioPage() {
         }
     };
 
-    const visibleProjects = (isAdmin ? projects : projects.filter(p => p.isPublished !== false))
-        .slice()
-        .sort((a, b) => {
-            if (projectSortOrder === 'newest') return (b.orderIndex || 0) - (a.orderIndex || 0);
-            return (a.orderIndex || 0) - (b.orderIndex || 0);
-        });
+    const moveProject = async (index: number, direction: number) => {
+        const newProjects = [...projects];
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= newProjects.length) return;
+        [newProjects[index], newProjects[targetIndex]] = [newProjects[targetIndex], newProjects[index]];
+        // อัปเดต orderIndex ใน Firebase
+        const now = Date.now();
+        await Promise.all(newProjects.map((p, i) => updateDoc(doc(db, "projects", p.id), { orderIndex: now - i * 1000 })));
+        setProjects(newProjects);
+    };
+
+    const visibleProjects = isAdmin ? projects : projects.filter(p => p.isPublished !== false);
     const bigProjects = visibleProjects.slice(0, getSectionConfig('projects').limit || 10);
     const smallProjects = visibleProjects.slice(getSectionConfig('projects').limit || 10);
 
@@ -429,18 +433,19 @@ export default function PortfolioPage() {
         } else {
             setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCExistingImage('');
         }
-        setCFile(null); setShowCertModal(true);
+        setCFiles([]); setShowCertModal(true);
     };
 
     const handleSaveCert = async (e: React.FormEvent) => {
         e.preventDefault(); setIsSaving(true);
         try {
-            let finalImageUrl = cExistingImage;
-            if (cFile) {
-                const url = await uploadToCloudinary(cFile);
-                if (url) finalImageUrl = url;
+            let imageUrls: string[] = cExistingImage ? [cExistingImage] : [];
+            if (cFiles.length > 0) {
+                const uploaded = await Promise.all(cFiles.map(f => uploadToCloudinary(f)));
+                imageUrls = uploaded.filter(Boolean) as string[];
             }
-            const data = { title: cTitle, issuer: cIssuer, year: cYear, imageUrl: finalImageUrl };
+            const finalImageUrl = imageUrls[0] || '';
+            const data = { title: cTitle, issuer: cIssuer, year: cYear, imageUrl: finalImageUrl, imageUrls };
             if (editingCert) {
                 await updateDoc(doc(db, "certificates", editingCert.id), data);
                 let updatedCerts = certificates.map(c => c.id === editingCert.id ? { ...c, ...data } : c);
@@ -502,19 +507,20 @@ export default function PortfolioPage() {
         } else {
             setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImage('');
         }
-        setSFile(null); setShowShowcaseModal(true);
+        setSFiles([]); setShowShowcaseModal(true);
     };
 
     const handleSaveShowcase = async (e: React.FormEvent) => {
         e.preventDefault(); setIsSaving(true);
         try {
-            let finalImageUrl = sExistingImage;
-            if (sFile) {
-                const url = await uploadToCloudinary(sFile);
-                if (url) finalImageUrl = url;
+            let imageUrls: string[] = sExistingImage ? [sExistingImage] : [];
+            if (sFiles.length > 0) {
+                const uploaded = await Promise.all(sFiles.map(f => uploadToCloudinary(f)));
+                imageUrls = uploaded.filter(Boolean) as string[];
             }
+            const finalImageUrl = imageUrls[0] || '';
             const textClearDesc = sDesc.replace(/<\/?[^>]+(>|$)/g, "");
-            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl };
+            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
@@ -796,17 +802,25 @@ export default function PortfolioPage() {
                             {pathname === '/' && !activeHash && <span className="absolute -bottom-2 w-1.5 h-1.5 bg-gray-900 rounded-full"></span>}
                         </Link>
 
-                        {/* 🌟 เมนู Works แบบ Dropdown ยุบ 3 เมนูหน้าแรกมาไว้ที่นี่เพื่อลดความรก */}
-                        <div className="relative group py-2">
-                            <button className={`flex items-center gap-1 transition-colors ${pathname === '/' && ['projects', 'portfolio', 'certificates'].includes(activeHash) ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-900'}`}>
-                                Works <ChevronDown size={14}/>
+                        {/* 🌟 เมนู Works แบบ Dropdown — ใช้ click toggle รองรับ iPad/touch */}
+                        <div className="relative py-2">
+                            <button
+                                onClick={() => setIsWorksOpen(!isWorksOpen)}
+                                className={`flex items-center gap-1 transition-colors ${pathname === '/' && ['projects', 'portfolio', 'certificates'].includes(activeHash) ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                            >
+                                Works <ChevronDown size={14} className={`transition-transform duration-200 ${isWorksOpen ? 'rotate-180' : ''}`}/>
                                 {pathname === '/' && ['projects', 'portfolio', 'certificates'].includes(activeHash) && <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-gray-900 rounded-full"></span>}
                             </button>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-40 bg-white border border-gray-100 shadow-xl rounded-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                                {getSectionConfig('projects').visible !== false && <Link href="/#projects" className={`block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors ${activeHash === 'projects' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}`}>Projects</Link>}
-                                {getSectionConfig('portfolio').visible !== false && <Link href="/#portfolio" className={`block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors ${activeHash === 'portfolio' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}`}>Portfolio</Link>}
-                                {getSectionConfig('certificates').visible !== false && <Link href="/#certificates" className={`block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors ${activeHash === 'certificates' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}`}>Awards</Link>}
-                            </div>
+                            {isWorksOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsWorksOpen(false)}/>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-40 bg-white border border-gray-100 shadow-xl rounded-2xl p-2 z-20">
+                                        {getSectionConfig('projects').visible !== false && <Link href="/#projects" onClick={() => setIsWorksOpen(false)} className={`block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors ${activeHash === 'projects' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}`}>Projects</Link>}
+                                        {getSectionConfig('portfolio').visible !== false && <Link href="/#portfolio" onClick={() => setIsWorksOpen(false)} className={`block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors ${activeHash === 'portfolio' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}`}>Portfolio</Link>}
+                                        {getSectionConfig('certificates').visible !== false && <Link href="/#certificates" onClick={() => setIsWorksOpen(false)} className={`block px-4 py-2.5 text-xs font-medium rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors ${activeHash === 'certificates' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}`}>Awards</Link>}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <Link href="/about" className={`relative flex justify-center transition-colors ${pathname === '/about' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-900'}`}>
@@ -819,9 +833,8 @@ export default function PortfolioPage() {
                             {pathname === '/resume' && <span className="absolute -bottom-2 w-1.5 h-1.5 bg-gray-900 rounded-full"></span>}
                         </Link>
 
-                        <Link href="/#contact" className={`relative flex justify-center transition-colors ${activeHash === 'contact' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-900'}`}>
+                        <Link href="/#contact" className="relative flex justify-center transition-colors text-gray-500 hover:text-gray-900">
                             Contact
-                            {activeHash === 'contact' && <span className="absolute -bottom-2 w-1.5 h-1.5 bg-gray-900 rounded-full"></span>}
                         </Link>
 
                         {isAdmin && (
@@ -913,31 +926,31 @@ export default function PortfolioPage() {
                     return (
                         <section key="projects" id="projects" className="max-w-6xl mx-auto px-6 py-24 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('projects').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
-                            <div className="flex flex-wrap justify-between items-center gap-3 mb-12">
+                            <div className="flex justify-between items-center mb-12">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
                                     <Briefcase className="text-gray-900"/> Selected Projects
                                 </h2>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {/* ปุ่มเรียงลำดับ */}
-                                    <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1 border border-gray-200">
-                                        <button onClick={() => setProjectSortOrder('newest')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${projectSortOrder === 'newest' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>ใหม่ก่อน</button>
-                                        <button onClick={() => setProjectSortOrder('oldest')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${projectSortOrder === 'oldest' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>เก่าก่อน</button>
-                                    </div>
-                                    {isAdmin && (
-                                        <button onClick={() => openProjectEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
-                                            <Plus size={16}/> เพิ่มกิจกรรม
-                                        </button>
-                                    )}
-                                </div>
+                                {isAdmin && (
+                                    <button onClick={() => openProjectEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
+                                        <Plus size={16}/> เพิ่มกิจกรรม
+                                    </button>
+                                )}
                             </div>
 
                             <div className="space-y-32">
                                 {visibleProjects.length === 0 ? ( <div className="text-center py-20 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">ยังไม่มีข้อมูลกิจกรรม</div>) : (
                                     bigProjects.map((project:any, index:number) => {
                                         const isEven = index % 2 === 0;
+                                        const globalIndex = projects.indexOf(project);
                                         return (
                                             <div key={project.id} className="relative group/project">
                                                 {isAdmin && project.isPublished === false && <div className="absolute -top-6 left-0 z-30 bg-orange-100 text-orange-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={12}/> ซ่อนอยู่ (Draft)</div>}
+                                                {isAdmin && (
+                                                    <div className="absolute -top-6 right-0 z-30 flex gap-1">
+                                                        <button onClick={() => moveProject(globalIndex, -1)} disabled={globalIndex === 0} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↑</button>
+                                                        <button onClick={() => moveProject(globalIndex, 1)} disabled={globalIndex === projects.length - 1} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↓</button>
+                                                    </div>
+                                                )}
 
                                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center cursor-pointer">
                                                     <div className={`md:col-span-7 h-96 rounded-2xl bg-gray-100 flex items-center justify-center relative overflow-hidden shadow-md border border-gray-100 group/img ${isEven ? 'order-1' : 'order-1 md:order-2'}`}>
@@ -1196,16 +1209,6 @@ export default function PortfolioPage() {
                     )}
                 </div>
                 
-                <div className="max-w-md mx-auto bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm text-left mb-16">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6">ส่งข้อความถึงผม (Contact Me)</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); alert("ระบบส่งข้อความจะเชื่อมต่อกับ Email เร็วๆ นี้ครับ!"); }}>
-                        <input type="text" required placeholder="ชื่อของคุณ" className="w-full mb-4 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-gray-900 focus:bg-white transition" />
-                        <input type="email" required placeholder="อีเมล" className="w-full mb-4 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-gray-900 focus:bg-white transition" />
-                        <textarea required placeholder="รายละเอียด..." className="w-full mb-6 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-gray-900 focus:bg-white transition h-24"></textarea>
-                        <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 hover:shadow-lg transition flex justify-center items-center gap-2">ส่งข้อความ <Send size={18}/></button>
-                    </form>
-                </div>
-
                 <div className="mt-20 text-xs text-gray-400 flex flex-col items-center space-y-4">
                     <span onDoubleClick={() => setShowLoginModal(true)} className="cursor-default select-none transition hover:text-gray-500">© {new Date().getFullYear()} Sorasak Yamsri.</span>
                 </div>
@@ -1216,16 +1219,20 @@ export default function PortfolioPage() {
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-7xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
                         <button onClick={() => setSelectedProject(null)} className="absolute top-6 right-6 z-10 bg-gray-100/80 backdrop-blur-md w-12 h-12 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-200 transition text-xl"><X size={24}/></button>
-                        <div className="w-full md:w-3/5 bg-[#fafafa] relative h-[50vh] md:h-auto flex items-center justify-center group p-4 md:p-12">
+                        <div className="w-full md:w-3/5 bg-[#fafafa] relative h-[50vh] md:h-auto flex items-center justify-center p-4 md:p-12">
                             {selectedProject.imageUrls?.length > 0 ? (
                                 <>
-                                    <img src={selectedProject.imageUrls[currentImageIndex]} className="w-full h-full object-contain drop-shadow-sm transition-opacity duration-500" />
+                                    <img
+                                        src={selectedProject.imageUrls[currentImageIndex]}
+                                        className="w-full h-full object-contain drop-shadow-sm transition-opacity duration-500 cursor-zoom-in"
+                                        onClick={() => setLightboxImage(selectedProject.imageUrls[currentImageIndex])}
+                                    />
                                     {selectedProject.imageUrls.length > 1 && (
                                         <>
-                                            <button onClick={prevImage} className="absolute left-6 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition opacity-0 group-hover:opacity-100 text-xl">❮</button>
-                                            <button onClick={nextImage} className="absolute right-6 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition opacity-0 group-hover:opacity-100 text-xl">❯</button>
-                                            <div className="absolute bottom-6 left-0 right-0 flex justify-center space-x-2">
-                                                {selectedProject.imageUrls.map((_: any, idx: number) => (<div key={idx} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'bg-gray-900 w-6' : 'bg-gray-300'}`} />))}
+                                            <button onClick={prevImage} className="absolute left-3 md:left-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❮</button>
+                                            <button onClick={nextImage} className="absolute right-3 md:right-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❯</button>
+                                            <div className="absolute bottom-4 md:bottom-6 left-0 right-0 flex justify-center space-x-2">
+                                                {selectedProject.imageUrls.map((_: any, idx: number) => (<div key={idx} onClick={() => setCurrentImageIndex(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === currentImageIndex ? 'bg-gray-900 w-6' : 'bg-gray-300'}`} />))}
                                             </div>
                                         </>
                                     )}
@@ -1255,28 +1262,40 @@ export default function PortfolioPage() {
                     <div className="bg-[#fafafa] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative border border-gray-200">
                         <div className="sticky top-0 flex justify-between items-center p-6 border-b border-gray-200 bg-white z-10">
                             <div>
-                                <h3 className="font-bold text-gray-900 text-xl sm:text-2xl mb-1">รายละเอียดผลงาน</h3>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">รูปภาพผลงาน</p>
+                                <h3 className="font-bold text-gray-900 text-xl sm:text-2xl">{selectedShowcase.title}</h3>
                             </div>
-                            <button onClick={() => setSelectedShowcase(null)} className="text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors shrink-0"><X size={24}/></button>
+                            <button onClick={() => setSelectedShowcase(null)} className="text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2.5 rounded-full transition-colors shrink-0"><X size={24}/></button>
                         </div>
                         <div className="p-6 md:p-8 overflow-y-auto flex-1 bg-gray-50/50">
-                            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm mb-8">
+                            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm mb-6">
                                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{selectedShowcase.title}</h2>
                                 {selectedShowcase.desc && <p className="text-gray-600 leading-relaxed mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 whitespace-pre-line">{selectedShowcase.desc}</p>}
                                 {selectedShowcase.link && <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>}
                             </div>
-                            
-                            {selectedShowcase.imageUrl && (
-                                <>
-                                    <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพผลงาน</h3>
-                                    <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(selectedShowcase.imageUrl)}>
-                                        <img src={selectedShowcase.imageUrl} alt={selectedShowcase.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                            <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
+
+                            {/* แสดงรูปทุกรูป (imageUrls) ถ้ามี, fallback เป็น imageUrl */}
+                            {(() => {
+                                const allImages: string[] = selectedShowcase.imageUrls?.length > 0
+                                    ? selectedShowcase.imageUrls
+                                    : selectedShowcase.imageUrl ? [selectedShowcase.imageUrl] : [];
+                                if (allImages.length === 0) return null;
+                                return (
+                                    <>
+                                        <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพผลงาน ({allImages.length})</h3>
+                                        <div className={`grid gap-4 ${allImages.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                                            {allImages.map((url: string, idx: number) => (
+                                                <div key={idx} className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(url)}>
+                                                    <img src={url} alt={`${selectedShowcase.title}-${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                                                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -1327,9 +1346,19 @@ export default function PortfolioPage() {
                         <form onSubmit={handleSaveProject} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ชื่อผลงาน</label><input type="text" required value={pTitle} onChange={e=>setPTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" /></div>
-                                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">หมวดหมู่</label><select value={pCategory} onChange={e=>setPCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"><option value="องค์การนิสิต (Student Organization)">องค์การนิสิต</option><option value="กิจกรรมคณะและสาขา">กิจกรรมคณะ</option><option value="โปรเจกต์วิชาการ">โปรเจกต์วิชาการ</option></select></div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">หมวดหมู่</label>
+                                    <input type="text" list="categoryList" value={pCategory} onChange={e=>setPCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" placeholder="พิมพ์หรือเลือกจากลิสต์..." />
+                                    <datalist id="categoryList">
+                                        <option value="องค์การนิสิต (Student Organization)" />
+                                        <option value="กิจกรรมคณะและสาขา" />
+                                        <option value="โปรเจกต์วิชาการ" />
+                                        <option value="หกะ" />
+                                        {aboutData.categories.map((cat: any) => <option key={cat.id} value={cat.title} />)}
+                                    </datalist>
+                                </div>
                                 
-                                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">วันที่จัดกิจกรรม (ปฏิทิน)</label><input type="date" value={pDate} onChange={e=>setPDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm cursor-pointer" /></div>
+                                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">วันที่จัดกิจกรรม</label><input type="date" value={pDate} onChange={e=>setPDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm cursor-pointer" /></div>
                                 
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">ทักษะที่ใช้ (คั่นด้วย ,)</label>
@@ -1344,26 +1373,16 @@ export default function PortfolioPage() {
                                 </div>
                             </div>
                             
-                            
-
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><textarea required value={pDesc} onChange={e=>setPDesc(e.target.value)} className="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><textarea placeholder="เช่น มีผู้เข้าร่วม 5,000 คน บริหารงบ 100,000 บาท..." value={pImpact} onChange={e=>setPImpact(e.target.value)} className="w-full h-24 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
-
-                            {/* ช่องลิงก์กิจกรรม */}
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ลิงก์กิจกรรม (External Link)</label><input type="url" placeholder="https://..." value={pLink} onChange={e=>setPLink(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" /></div>
-
-                            {/* toggle show/hide */}
-                            <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-4">
-                                <div>
-                                    <h4 className="text-sm font-bold text-blue-900">แสดงกิจกรรมนี้</h4>
-                                    <p className="text-xs text-blue-700 mt-0.5">{pIsPublished ? 'แสดงอยู่ (Public)' : 'ซ่อนอยู่ (Draft)'}</p>
-                                </div>
+                            <div className="flex items-center justify-between bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <div><h4 className="text-sm font-bold text-blue-900">Defensive Status</h4><p className="text-xs text-blue-700 mt-1">ซ่อนไว้ก่อนหากยังจัดหน้าไม่เสร็จ</p></div>
                                 <label className="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" className="sr-only peer" checked={pIsPublished} onChange={(e) => setPIsPublished(e.target.checked)} />
                                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                                 </label>
                             </div>
 
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><textarea required value={pDesc} onChange={e=>setPDesc(e.target.value)} className="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><textarea placeholder="เช่น มีผู้เข้าร่วม 5,000 คน บริหารงบ 100,000 บาท..." value={pImpact} onChange={e=>setPImpact(e.target.value)} className="w-full h-24 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">เพิ่มรูปภาพ (หลายรูปได้)</label><input type="file" accept="image/*" multiple onChange={(e) => setPFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 cursor-pointer" /></div>
                             
                             <div className="flex gap-4 pt-4 border-t border-gray-100">
@@ -1386,9 +1405,10 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">หน่วยงานที่ออกให้</label><input type="text" required value={cIssuer} onChange={e=>setCIssuer(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Bootcamp Co." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ปีที่ได้รับ</label><input type="text" required value={cYear} onChange={e=>setCYear(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น 2026" /></div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพ</label>
-                                <input type="file" accept="image/*" onChange={(e) => setCFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
-                                {cExistingImage && !cFile && <p className="text-xs text-blue-500 mt-2">มีรูปภาพเดิมอยู่แล้ว</p>}
+                                <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพ (เพิ่มได้มากกว่า 1 ภาพ)</label>
+                                <input type="file" accept="image/*" multiple onChange={(e) => setCFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
+                                {cFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกแล้ว {cFiles.length} รูป</p>}
+                                {cExistingImage && cFiles.length === 0 && <p className="text-xs text-blue-500 mt-2">มีรูปภาพเดิมอยู่แล้ว</p>}
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-gray-100">
                                 {editingCert && <button type="button" onClick={() => handleDeleteCert(editingCert.id)} className="px-4 py-3 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition text-sm">ลบ</button>}
@@ -1427,9 +1447,10 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดสั้นๆ (ไม่บังคับ)</label><textarea rows={3} value={sDesc} onChange={e=>setSDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดผลงาน..." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ลิงก์ผลงานภายนอก (ไม่บังคับ)</label><input type="url" value={sLink} onChange={e=>setSLink(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="https://..." /></div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพผลงาน (บังคับ)</label>
-                                <input type="file" accept="image/*" onChange={(e) => setSFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
-                                {sExistingImage && !sFile && <p className="text-xs text-blue-500 mt-2">มีรูปภาพเดิมอยู่แล้ว</p>}
+                                <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพผลงาน (เพิ่มได้มากกว่า 1 ภาพ)</label>
+                                <input type="file" accept="image/*" multiple onChange={(e) => setSFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
+                                {sFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกแล้ว {sFiles.length} รูป</p>}
+                                {sExistingImage && sFiles.length === 0 && <p className="text-xs text-blue-500 mt-2">มีรูปภาพเดิมอยู่แล้ว</p>}
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-gray-100">
                                 {editingShowcase && <button type="button" onClick={() => handleDeleteShowcase(editingShowcase.id)} className="px-4 py-3 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition text-sm">ลบ</button>}
