@@ -1066,13 +1066,13 @@ export default function PortfolioPage() {
                                 {sortedProjects.length === 0 ? ( <div className="text-center py-20 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">ยังไม่มีข้อมูลกิจกรรม</div>) : (
                                     bigProjects.map((project:any, index:number) => {
                                         const isEven = index % 2 === 0;
-                                        const globalIndex = projects.indexOf(project); // Map back to true DB index for saving
+                                        const globalIndex = projects.indexOf(project);
                                         
                                         return (
                                             <div 
                                                 key={project.id} 
                                                 className={`relative group/project transition-all duration-300 dnd-project
-                                                    ${isAdmin && !isDateSort ? 'cursor-move' : ''}
+                                                    ${isAdmin && !isDateSort ? 'cursor-move select-none [-webkit-touch-callout:none]' : ''}
                                                     ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : ''}
                                                     ${dragOverProjectIdx === globalIndex && draggedProjectIdx !== globalIndex ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20 p-4 rounded-3xl' : 'border-transparent border-2'}
                                                 `}
@@ -1081,6 +1081,7 @@ export default function PortfolioPage() {
                                                 onDragEnter={(e) => onDragEnterProject(e, globalIndex)}
                                                 onDragEnd={onDragEndProject}
                                                 onDragOver={(e) => e.preventDefault()}
+                                                onContextMenu={(e) => { if(isAdmin && !isDateSort) e.preventDefault(); }}
                                                 
                                                 onTouchStart={(e) => {
                                                     if(!isAdmin || isDateSort) return;
@@ -1157,7 +1158,7 @@ export default function PortfolioPage() {
                                             <div 
                                                 key={project.id} 
                                                 className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
-                                                    ${isAdmin && !isDateSort ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                                    ${isAdmin && !isDateSort ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
                                                     ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2' : 'border-gray-100'}
                                                     ${dragOverProjectIdx === globalIndex && draggedProjectIdx !== globalIndex ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
                                                 `}
@@ -1166,6 +1167,7 @@ export default function PortfolioPage() {
                                                 onDragEnter={(e) => onDragEnterProject(e, globalIndex)}
                                                 onDragEnd={onDragEndProject}
                                                 onDragOver={(e) => e.preventDefault()}
+                                                onContextMenu={(e) => { if(isAdmin && !isDateSort) e.preventDefault(); }}
                                                 
                                                 onTouchStart={(e) => {
                                                     if(!isAdmin || isDateSort) return;
@@ -1265,6 +1267,7 @@ export default function PortfolioPage() {
                                         onDragEnter={(e) => onDragEnterShowcase(e, index)}
                                         onDragEnd={onDragEndShowcase}
                                         onDragOver={(e) => e.preventDefault()}
+                                        onContextMenu={(e) => { if(isAdmin) e.preventDefault(); }}
                                         
                                         onTouchStart={(e) => {
                                             if(!isAdmin) return;
@@ -1299,7 +1302,7 @@ export default function PortfolioPage() {
                                         
                                         onClick={() => setSelectedShowcase(showcase)}
                                         className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-showcase
-                                            ${isAdmin ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                            ${isAdmin ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
                                             ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
                                             ${dragOverShowcaseIdx === index && draggedShowcaseIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
                                         `}
@@ -1379,6 +1382,7 @@ export default function PortfolioPage() {
                                         onDragEnter={(e) => onDragEnterCert(e, index)}
                                         onDragEnd={onDragEndCert}
                                         onDragOver={(e) => e.preventDefault()}
+                                        onContextMenu={(e) => { if(isAdmin) e.preventDefault(); }}
                                         
                                         onTouchStart={(e) => {
                                             if(!isAdmin) return;
@@ -1413,7 +1417,7 @@ export default function PortfolioPage() {
 
                                         onClick={() => setSelectedCert(cert)}
                                         className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-cert
-                                            ${isAdmin ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                            ${isAdmin ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
                                             ${draggedCertIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
                                             ${dragOverCertIdx === index && draggedCertIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
                                         `}
