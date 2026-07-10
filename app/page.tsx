@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../lib/firebase';
 import { collection, getDocs, query, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
@@ -15,7 +15,7 @@ import {
     Award, List, ListOrdered, ChevronDown, ChevronUp, FolderOpen, 
     Wrench, MousePointerClick, Palette, Loader, Image as LucideImage, 
     AlertTriangle, Send, PlusCircle, TrendingUp, AlignLeft, AlignCenter, AlignRight,
-    Lock, ArrowUp, ArrowDown, Eye, EyeOff, Layout, ArrowRight, GripHorizontal
+    Lock, ArrowUp, ArrowDown, Eye, EyeOff, Layout, ArrowRight, GripHorizontal, Calendar
 } from 'lucide-react';
 
 export default function PortfolioPage() {
@@ -39,7 +39,7 @@ export default function PortfolioPage() {
     const [showAllShowcases, setShowAllShowcases] = useState(false);
 
     const [sectionsConfig, setSectionsConfig] = useState<any>({
-        projects: { visible: true, order: 1, limit: 10 },
+        projects: { visible: true, order: 1, limit: 10, sortMode: 'manual' },
         portfolio: { visible: true, order: 2 },
         certificates: { visible: true, order: 3 }
     });
@@ -85,7 +85,8 @@ export default function PortfolioPage() {
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [editingProject, setEditingProject] = useState<any>(null);
     const [pTitle, setPTitle] = useState(''); const [pCategory, setPCategory] = useState('Event Management & Leadership');
-    const [pDate, setPDate] = useState(''); const [pDesc, setPDesc] = useState('');
+    const [pDateMode, setPDateMode] = useState('single'); const [pStartDate, setPStartDate] = useState(''); const [pEndDate, setPEndDate] = useState('');
+    const [pDesc, setPDesc] = useState('');
     const [pImpact, setPImpact] = useState(''); const [pTags, setPTags] = useState('');
     const [pFiles, setPFiles] = useState<File[]>([]); const [pExistingImages, setPExistingImages] = useState<string[]>([]);
     const [pIsPublished, setPIsPublished] = useState(true);
@@ -95,6 +96,7 @@ export default function PortfolioPage() {
     const [cTitle, setCTitle] = useState('');
     const [cIssuer, setCIssuer] = useState('');
     const [cYear, setCYear] = useState('');
+    const [cDesc, setCDesc] = useState('');
     const [cFiles, setCFiles] = useState<File[]>([]);
     const [cExistingImage, setCExistingImage] = useState('');
 
@@ -115,6 +117,11 @@ export default function PortfolioPage() {
     const [isWorksOpen, setIsWorksOpen] = useState(false);
 
     // 🌟 State สำหรับจัดการลากและวาง (Drag and Drop)
+    const dragTimer = useRef<NodeJS.Timeout | null>(null);
+    
+    const [draggedProjectIdx, setDraggedProjectIdx] = useState<number | null>(null);
+    const [dragOverProjectIdx, setDragOverProjectIdx] = useState<number | null>(null);
+
     const [draggedShowcaseIdx, setDraggedShowcaseIdx] = useState<number | null>(null);
     const [dragOverShowcaseIdx, setDragOverShowcaseIdx] = useState<number | null>(null);
     
@@ -169,7 +176,7 @@ export default function PortfolioPage() {
                     
                     if (data.sectionsConfig) {
                         setSectionsConfig({
-                            projects: { visible: true, order: 1, limit: 10, ...data.sectionsConfig.projects },
+                            projects: { visible: true, order: 1, limit: 10, sortMode: 'manual', ...data.sectionsConfig.projects },
                             portfolio: { visible: true, order: 2, ...data.sectionsConfig.portfolio },
                             certificates: { visible: true, order: 3, ...data.sectionsConfig.certificates }
                         });
@@ -189,11 +196,12 @@ export default function PortfolioPage() {
                 const profileDoc = await getDoc(doc(db, "settings", "userProfile"));
                 if (profileDoc.exists()) setProfileData(profileDoc.data());
 
-                const q = query(collection(db, "projects"), orderBy("orderIndex", "desc"));
+                const q = query(collection(db, "projects"));
                 const querySnapshot = await getDocs(q);
-                setProjects(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), imageUrls: doc.data().imageUrls || [] })));
+                const loadedProjects = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), imageUrls: doc.data().imageUrls || [] }));
+                loadedProjects.sort((a: any, b: any) => (b.orderIndex || 0) - (a.orderIndex || 0));
+                setProjects(loadedProjects);
 
-                // 🌟 Fetch Certificates & Showcases
                 const certQ = query(collection(db, "certificates"));
                 const certSnap = await getDocs(certQ);
                 const loadedCerts = certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -240,7 +248,7 @@ export default function PortfolioPage() {
 
     const getSectionConfig = (key: string) => {
         const defaults: any = {
-            projects: { visible: true, order: 1, limit: 10 },
+            projects: { visible: true, order: 1, limit: 10, sortMode: 'manual' },
             portfolio: { visible: true, order: 2 },
             certificates: { visible: true, order: 3 }
         };
@@ -372,13 +380,24 @@ export default function PortfolioPage() {
         } catch (err) { console.error(err); } finally { setIsSaving(false); }
     };
 
+    const formatDateStr = (dateStr: string) => {
+        if(!dateStr) return '';
+        if(dateStr.includes('-') && dateStr.length === 10) {
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+        return dateStr;
+    };
+
     const openProjectEditor = (project: any = null) => {
         if (project) {
-            setEditingProject(project); setPTitle(project.title); setPCategory(project.category); setPDate(project.date || '');
+            setEditingProject(project); setPTitle(project.title); setPCategory(project.category); 
+            setPDateMode(project.dateMode || 'single'); setPStartDate(project.startDate || project.date || ''); setPEndDate(project.endDate || '');
             setPDesc(project.description); setPImpact(project.impact || ''); setPTags(project.tags ? project.tags.join(', ') : '');
             setPExistingImages(project.imageUrls || []); setPIsPublished(project.isPublished !== false);
         } else {
-            setEditingProject(null); setPTitle(''); setPCategory('องค์การนิสิต (Student Organization)'); setPDate('');
+            setEditingProject(null); setPTitle(''); setPCategory('องค์การนิสิต (Student Organization)'); 
+            setPDateMode('single'); setPStartDate(''); setPEndDate('');
             setPDesc(''); setPImpact(''); setPTags(''); setPExistingImages([]); setPIsPublished(true);
         }
         setPFiles([]); setShowProjectModal(true);
@@ -395,13 +414,22 @@ export default function PortfolioPage() {
                     if (url) finalImageUrls.push(url);
                 }
             }
-            const data = { title: pTitle, category: pCategory, date: pDate, description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished };
+            let finalDateStr = formatDateStr(pStartDate);
+            if (pDateMode === 'range' && pEndDate) {
+                finalDateStr = `${formatDateStr(pStartDate)} - ${formatDateStr(pEndDate)}`;
+            }
+
+            const data = { 
+                title: pTitle, category: pCategory, 
+                dateMode: pDateMode, startDate: pStartDate, endDate: pEndDate, date: finalDateStr, 
+                description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished 
+            };
             if (editingProject) {
                 await updateDoc(doc(db, "projects", editingProject.id), data);
                 setProjects(projects.map(p => p.id === editingProject.id ? { ...p, ...data } : p));
             } else {
                 const docRef = await addDoc(collection(db, "projects"), { ...data, createdAt: new Date(), orderIndex: Date.now() });
-                setProjects([{ id: docRef.id, ...data }, ...projects]);
+                setProjects([{ id: docRef.id, ...data, orderIndex: Date.now() }, ...projects].sort((a,b)=>(b.orderIndex||0)-(a.orderIndex||0)));
             }
             setShowProjectModal(false); alert("บันทึกผลงานสำเร็จ!");
         } catch (error) { console.error(error); alert("เกิดข้อผิดพลาด"); } finally { setIsSaving(false); }
@@ -425,15 +453,11 @@ export default function PortfolioPage() {
         setProjects(newProjects);
     };
 
-    const visibleProjects = isAdmin ? projects : projects.filter(p => p.isPublished !== false);
-    const bigProjects = visibleProjects.slice(0, getSectionConfig('projects').limit || 10);
-    const smallProjects = visibleProjects.slice(getSectionConfig('projects').limit || 10);
-
     const openCertEditor = (cert: any = null) => {
         if (cert) {
-            setEditingCert(cert); setCTitle(cert.title); setCIssuer(cert.issuer); setCYear(cert.year); setCExistingImage(cert.imageUrl || '');
+            setEditingCert(cert); setCTitle(cert.title); setCIssuer(cert.issuer); setCYear(cert.year); setCDesc(cert.desc || ''); setCExistingImage(cert.imageUrl || '');
         } else {
-            setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCExistingImage('');
+            setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCDesc(''); setCExistingImage('');
         }
         setCFiles([]); setShowCertModal(true);
     };
@@ -447,7 +471,7 @@ export default function PortfolioPage() {
                 imageUrls = uploaded.filter(Boolean) as string[];
             }
             const finalImageUrl = imageUrls[0] || '';
-            const data = { title: cTitle, issuer: cIssuer, year: cYear, imageUrl: finalImageUrl, imageUrls };
+            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls };
             if (editingCert) {
                 await updateDoc(doc(db, "certificates", editingCert.id), data);
                 let updatedCerts = certificates.map(c => c.id === editingCert.id ? { ...c, ...data } : c);
@@ -544,18 +568,43 @@ export default function PortfolioPage() {
     // ==========================================
     // 🌟 ระบบลากและวาง (Drag and Drop Handlers)
     // ==========================================
+    const onDragStartProject = (e: React.DragEvent, index: number) => {
+        if (!isAdmin || getSectionConfig('projects').sortMode === 'date') return;
+        setDraggedProjectIdx(index);
+        e.dataTransfer.effectAllowed = "move";
+    };
+    const onDragEnterProject = (e: React.DragEvent, index: number) => {
+        if (!isAdmin || draggedProjectIdx === null) return;
+        setDragOverProjectIdx(index);
+    };
+    const onDragEndProject = async () => {
+        if (!isAdmin) return;
+        if (draggedProjectIdx !== null && dragOverProjectIdx !== null && draggedProjectIdx !== dragOverProjectIdx) {
+            const items = [...projects];
+            const draggedItem = items[draggedProjectIdx];
+            items.splice(draggedProjectIdx, 1);
+            items.splice(dragOverProjectIdx, 0, draggedItem);
+            
+            setProjects(items);
+            const now = Date.now();
+            await Promise.all(items.map((item, idx) => 
+                updateDoc(doc(db, "projects", item.id), { orderIndex: now - idx * 1000 })
+            ));
+        }
+        setDraggedProjectIdx(null);
+        setDragOverProjectIdx(null);
+    };
+
     const onDragStartShowcase = (e: React.DragEvent, index: number) => {
         if (!isAdmin) return;
         setDraggedShowcaseIdx(index);
         e.dataTransfer.effectAllowed = "move";
     };
-
     const onDragEnterShowcase = (e: React.DragEvent, index: number) => {
         if (!isAdmin || draggedShowcaseIdx === null) return;
         setDragOverShowcaseIdx(index);
     };
-
-    const onDragEndShowcase = async (e: React.DragEvent) => {
+    const onDragEndShowcase = async () => {
         if (!isAdmin) return;
         if (draggedShowcaseIdx !== null && dragOverShowcaseIdx !== null && draggedShowcaseIdx !== dragOverShowcaseIdx) {
             const items = [...showcases];
@@ -564,7 +613,6 @@ export default function PortfolioPage() {
             items.splice(dragOverShowcaseIdx, 0, draggedItem);
             
             setShowcases(items);
-
             const now = Date.now();
             await Promise.all(items.map((item, idx) => 
                 updateDoc(doc(db, "showcases", item.id), { orderIndex: now - idx * 1000 })
@@ -579,13 +627,11 @@ export default function PortfolioPage() {
         setDraggedCertIdx(index);
         e.dataTransfer.effectAllowed = "move";
     };
-
     const onDragEnterCert = (e: React.DragEvent, index: number) => {
         if (!isAdmin || draggedCertIdx === null) return;
         setDragOverCertIdx(index);
     };
-
-    const onDragEndCert = async (e: React.DragEvent) => {
+    const onDragEndCert = async () => {
         if (!isAdmin) return;
         if (draggedCertIdx !== null && dragOverCertIdx !== null && draggedCertIdx !== dragOverCertIdx) {
             const items = [...certificates];
@@ -594,7 +640,6 @@ export default function PortfolioPage() {
             items.splice(dragOverCertIdx, 0, draggedItem);
             
             setCertificates(items);
-
             const now = Date.now();
             await Promise.all(items.map((item, idx) => 
                 updateDoc(doc(db, "certificates", item.id), { orderIndex: now - idx * 1000 })
@@ -604,6 +649,19 @@ export default function PortfolioPage() {
         setDragOverCertIdx(null);
     };
     // ==========================================
+
+    // 🌟 Project Sorting Logic
+    const isDateSort = getSectionConfig('projects').sortMode === 'date';
+    let sortedProjects = [...(isAdmin ? projects : projects.filter(p => p.isPublished !== false))];
+    if (isDateSort) {
+        sortedProjects.sort((a, b) => {
+            const dateA = new Date(a.startDate || a.date || 0).getTime();
+            const dateB = new Date(b.startDate || b.date || 0).getTime();
+            return dateB - dateA;
+        });
+    }
+    const bigProjects = sortedProjects.slice(0, getSectionConfig('projects').limit || 10);
+    const smallProjects = sortedProjects.slice(getSectionConfig('projects').limit || 10);
 
     const sortedSectionKeys = ['projects', 'portfolio', 'certificates'].sort((a, b) => {
         return getSectionConfig(a).order - getSectionConfig(b).order;
@@ -760,7 +818,7 @@ export default function PortfolioPage() {
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false, ''); }} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 underline text-gray-800 shadow-sm">U</button>
                                         <div className="w-px bg-gray-300 mx-1"></div>
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertUnorderedList', false, ''); }} title="List" className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><List size={14}/></button>
-                                        <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertOrderedList', false, ''); }} title="Number List" className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><ListOrdered size={14}/></button>
+                                        <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertOrderedList', false, ''); }} title="Number List" className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><List Ordered size={14}/></button>
                                         <div className="w-px bg-gray-300 mx-1"></div>
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyLeft', false, ''); }} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><AlignLeft size={14}/></button>
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyCenter', false, ''); }} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><AlignCenter size={14}/></button>
@@ -986,46 +1044,100 @@ export default function PortfolioPage() {
                     return (
                         <section key="projects" id="projects" className="max-w-6xl mx-auto px-6 py-24 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('projects').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
-                            <div className="flex justify-between items-center mb-12">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
                                     <Briefcase className="text-gray-900"/> Selected Projects
                                 </h2>
                                 {isAdmin && (
-                                    <button onClick={() => openProjectEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
-                                        <Plus size={16}/> เพิ่มกิจกรรม
-                                    </button>
+                                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                                        <div className="flex bg-gray-50 rounded-full border border-gray-200 overflow-hidden w-full md:w-auto">
+                                            <button onClick={() => saveSectionsConfig({...sectionsConfig, projects: {...getSectionConfig('projects'), sortMode: 'manual'}})} className={`flex-1 md:flex-none px-4 py-2 text-xs font-bold transition-colors ${!isDateSort ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>เรียงเอง (Manual)</button>
+                                            <button onClick={() => saveSectionsConfig({...sectionsConfig, projects: {...getSectionConfig('projects'), sortMode: 'date'}})} className={`flex-1 md:flex-none px-4 py-2 text-xs font-bold transition-colors ${isDateSort ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>ล่าสุด (Date)</button>
+                                        </div>
+                                        {!isDateSort && <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างเพื่อลากจัดเรียง</span>}
+                                        <button onClick={() => openProjectEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
+                                            <Plus size={16}/> เพิ่มกิจกรรม
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
                             <div className="space-y-32">
-                                {visibleProjects.length === 0 ? ( <div className="text-center py-20 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">ยังไม่มีข้อมูลกิจกรรม</div>) : (
+                                {sortedProjects.length === 0 ? ( <div className="text-center py-20 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">ยังไม่มีข้อมูลกิจกรรม</div>) : (
                                     bigProjects.map((project:any, index:number) => {
                                         const isEven = index % 2 === 0;
-                                        const globalIndex = projects.indexOf(project);
+                                        const globalIndex = projects.indexOf(project); // Map back to true DB index for saving
+                                        
                                         return (
-                                            <div key={project.id} className="relative group/project">
+                                            <div 
+                                                key={project.id} 
+                                                className={`relative group/project transition-all duration-300 dnd-project
+                                                    ${isAdmin && !isDateSort ? 'cursor-move' : ''}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : ''}
+                                                    ${dragOverProjectIdx === globalIndex && draggedProjectIdx !== globalIndex ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20 p-4 rounded-3xl' : 'border-transparent border-2'}
+                                                `}
+                                                draggable={isAdmin && !isDateSort}
+                                                onDragStart={(e) => onDragStartProject(e, globalIndex)}
+                                                onDragEnter={(e) => onDragEnterProject(e, globalIndex)}
+                                                onDragEnd={onDragEndProject}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                
+                                                onTouchStart={(e) => {
+                                                    if(!isAdmin || isDateSort) return;
+                                                    dragTimer.current = setTimeout(() => {
+                                                        setDraggedProjectIdx(globalIndex);
+                                                        document.body.style.overflow = 'hidden';
+                                                    }, 500);
+                                                }}
+                                                onTouchMove={(e) => {
+                                                    if(!isAdmin || isDateSort) return;
+                                                    if(draggedProjectIdx === null) {
+                                                        if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                        return;
+                                                    }
+                                                    const touch = e.touches[0];
+                                                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                                    const item = el?.closest('.dnd-project');
+                                                    if (item) {
+                                                        const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
+                                                        if (idx !== -1) setDragOverProjectIdx(idx);
+                                                    }
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    if(!isAdmin || isDateSort) return;
+                                                    if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                    if(draggedProjectIdx !== null) {
+                                                        document.body.style.overflow = '';
+                                                        onDragEndProject();
+                                                    }
+                                                }}
+                                                data-index={globalIndex}
+                                            >
                                                 {isAdmin && project.isPublished === false && <div className="absolute -top-6 left-0 z-30 bg-orange-100 text-orange-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={12}/> ซ่อนอยู่ (Draft)</div>}
-                                                {isAdmin && (
+                                                {isAdmin && !isDateSort && (
                                                     <div className="absolute -top-6 right-0 z-30 flex gap-1">
                                                         <button onClick={() => moveProject(globalIndex, -1)} disabled={globalIndex === 0} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↑</button>
                                                         <button onClick={() => moveProject(globalIndex, 1)} disabled={globalIndex === projects.length - 1} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↓</button>
                                                     </div>
                                                 )}
 
-                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center cursor-pointer">
+                                                <div className={`grid grid-cols-1 md:grid-cols-12 gap-12 items-center ${isAdmin && !isDateSort ? 'pointer-events-none' : 'cursor-pointer'}`}>
                                                     <div className={`md:col-span-7 h-96 rounded-2xl bg-gray-100 flex items-center justify-center relative overflow-hidden shadow-md border border-gray-100 group/img ${isEven ? 'order-1' : 'order-1 md:order-2'}`}>
-                                                        {project.imageUrls?.[0] ? <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover/project:scale-105 transition duration-700" onClick={() => { setSelectedProject(project); setCurrentImageIndex(0); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>}
+                                                        {project.imageUrls?.[0] ? <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover/project:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setSelectedProject(project); setCurrentImageIndex(0); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>}
                                                         {project.imageUrls?.length > 1 && <div className="absolute top-6 right-6 z-10 bg-white/90 text-gray-900 text-xs px-3 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-md">+{project.imageUrls.length - 1} รูป</div>}
                                                         
                                                         {isAdmin && (
-                                                            <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all z-20">
+                                                            <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all z-20 pointer-events-auto">
                                                                 <div className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 hover:scale-105 transition transform"><Edit3 size={18}/> แก้ไขข้อมูลและรูปภาพ</div>
                                                             </button>
                                                         )}
                                                     </div>
 
-                                                    <div onClick={() => { setSelectedProject(project); setCurrentImageIndex(0); }} className={`md:col-span-5 ${isEven ? 'order-2' : 'order-2 md:order-1'}`}>
-                                                        <p className="text-sm font-semibold text-gray-400 mb-3 tracking-widest uppercase">{(index + 1).toString().padStart(2, '0')} — {project.category} {project.date && `| ${project.date}`}</p>
+                                                    <div onClick={(e) => { e.stopPropagation(); setSelectedProject(project); setCurrentImageIndex(0); }} className={`md:col-span-5 pointer-events-auto ${isEven ? 'order-2' : 'order-2 md:order-1'}`}>
+                                                        <p className="text-sm font-semibold text-gray-400 mb-3 tracking-widest uppercase flex items-center gap-2">
+                                                            {(index + 1).toString().padStart(2, '0')} — {project.category} 
+                                                            {project.date && <span className="flex items-center gap-1"><Calendar size={12}/> {project.date}</span>}
+                                                        </p>
                                                         <h3 className="text-4xl font-bold mb-6 tracking-tight group-hover/project:text-gray-600 transition">{project.title}</h3>
                                                         {project.description && <p className="text-gray-500 font-light leading-relaxed mb-8 whitespace-pre-line line-clamp-3">{project.description}</p>}
                                                         <span className="text-sm font-medium border-b border-gray-900 pb-1 group-hover/project:text-gray-500 group-hover/project:border-gray-500 transition">ดูรายละเอียดเพิ่มเติม →</span>
@@ -1039,44 +1151,92 @@ export default function PortfolioPage() {
 
                             {smallProjects.length > 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20 pt-16 border-t border-gray-100">
-                                    {smallProjects.map((project:any) => (
-                                        <div key={project.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => { setSelectedProject(project); setCurrentImageIndex(0); }}>
-                                            {isAdmin && project.isPublished === false && <div className="absolute top-2 left-2 z-20 bg-orange-100 text-orange-700 px-2 py-1 rounded text-[10px] font-bold shadow-sm uppercase">Draft</div>}
-                                            {isAdmin && (
-                                                <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
-                                                    <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="p-2 text-gray-600 hover:text-blue-600"><Edit3 size={14}/></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
-                                                </div>
-                                            )}
-                                            <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
-                                                {project.imageUrls?.[0] ? (
-                                                    <>
-                                                        <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={project.title} />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                            <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="text-gray-300 flex flex-col items-center"><LucideImage size={32} className="mb-2"/><span className="text-xs">ไม่มีรูปภาพ</span></div>
+                                    {smallProjects.map((project:any) => {
+                                        const globalIndex = projects.indexOf(project);
+                                        return (
+                                            <div 
+                                                key={project.id} 
+                                                className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
+                                                    ${isAdmin && !isDateSort ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2' : 'border-gray-100'}
+                                                    ${dragOverProjectIdx === globalIndex && draggedProjectIdx !== globalIndex ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
+                                                `}
+                                                draggable={isAdmin && !isDateSort}
+                                                onDragStart={(e) => onDragStartProject(e, globalIndex)}
+                                                onDragEnter={(e) => onDragEnterProject(e, globalIndex)}
+                                                onDragEnd={onDragEndProject}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                
+                                                onTouchStart={(e) => {
+                                                    if(!isAdmin || isDateSort) return;
+                                                    dragTimer.current = setTimeout(() => {
+                                                        setDraggedProjectIdx(globalIndex);
+                                                        document.body.style.overflow = 'hidden';
+                                                    }, 500);
+                                                }}
+                                                onTouchMove={(e) => {
+                                                    if(!isAdmin || isDateSort) return;
+                                                    if(draggedProjectIdx === null) {
+                                                        if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                        return;
+                                                    }
+                                                    const touch = e.touches[0];
+                                                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                                    const item = el?.closest('.dnd-project');
+                                                    if (item) {
+                                                        const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
+                                                        if (idx !== -1) setDragOverProjectIdx(idx);
+                                                    }
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    if(!isAdmin || isDateSort) return;
+                                                    if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                    if(draggedProjectIdx !== null) {
+                                                        document.body.style.overflow = '';
+                                                        onDragEndProject();
+                                                    }
+                                                }}
+                                                data-index={globalIndex}
+                                                onClick={() => { if(!isAdmin) { setSelectedProject(project); setCurrentImageIndex(0); } else { setSelectedProject(project); setCurrentImageIndex(0); } }}
+                                            >
+                                                {isAdmin && project.isPublished === false && <div className="absolute top-2 left-2 z-20 bg-orange-100 text-orange-700 px-2 py-1 rounded text-[10px] font-bold shadow-sm uppercase">Draft</div>}
+                                                {isAdmin && (
+                                                    <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
+                                                        <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
+                                                    </div>
                                                 )}
-                                                {project.imageUrls?.length > 1 && <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1">+{project.imageUrls.length - 1}</div>}
+                                                <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
+                                                    {project.imageUrls?.[0] ? (
+                                                        <>
+                                                            <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={project.title} />
+                                                            {!isAdmin && (
+                                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                                    <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-gray-300 flex flex-col items-center"><LucideImage size={32} className="mb-2"/><span className="text-xs">ไม่มีรูปภาพ</span></div>
+                                                    )}
+                                                    {project.imageUrls?.length > 1 && <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1">+{project.imageUrls.length - 1}</div>}
+                                                </div>
+                                                <div className="flex-grow flex flex-col justify-between pointer-events-none">
+                                                    <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
+                                                    {project.category && <p className="text-[11px] text-blue-600 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
+                                                    {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{project.description}</p>}
+                                                </div>
                                             </div>
-                                            <div className="flex-grow flex flex-col justify-between">
-                                                <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
-                                                {project.category && <p className="text-[11px] text-blue-600 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
-                                                {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{project.description}</p>}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </section>
                     );
                 }
 
-                // --- 2. Portfolio Section (ผลงานหน้าหลัก) 🌟 เพิ่ม Drag & Drop ---
+                // --- 2. Portfolio Section (ผลงานหน้าหลัก) ---
                 if (key === 'portfolio') {
-                    // หากเป็น Admin บังคับแสดงผลทั้งหมดเพื่อความสะดวกในการจัดเรียง
                     const displayShowcases = isAdmin || showAllShowcases ? showcases : showcases.slice(0, 3);
                     
                     return (
@@ -1105,8 +1265,40 @@ export default function PortfolioPage() {
                                         onDragEnter={(e) => onDragEnterShowcase(e, index)}
                                         onDragEnd={onDragEndShowcase}
                                         onDragOver={(e) => e.preventDefault()}
-                                        onClick={() => !isAdmin ? setSelectedShowcase(showcase) : setSelectedShowcase(showcase)}
-                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col 
+                                        
+                                        onTouchStart={(e) => {
+                                            if(!isAdmin) return;
+                                            dragTimer.current = setTimeout(() => {
+                                                setDraggedShowcaseIdx(index);
+                                                document.body.style.overflow = 'hidden';
+                                            }, 500);
+                                        }}
+                                        onTouchMove={(e) => {
+                                            if(!isAdmin) return;
+                                            if(draggedShowcaseIdx === null) {
+                                                if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                return;
+                                            }
+                                            const touch = e.touches[0];
+                                            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                            const item = el?.closest('.dnd-showcase');
+                                            if (item) {
+                                                const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
+                                                if (idx !== -1) setDragOverShowcaseIdx(idx);
+                                            }
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            if(!isAdmin) return;
+                                            if(dragTimer.current) clearTimeout(dragTimer.current);
+                                            if(draggedShowcaseIdx !== null) {
+                                                document.body.style.overflow = '';
+                                                onDragEndShowcase();
+                                            }
+                                        }}
+                                        data-index={index}
+                                        
+                                        onClick={() => setSelectedShowcase(showcase)}
+                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-showcase
                                             ${isAdmin ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
                                             ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
                                             ${dragOverShowcaseIdx === index && draggedShowcaseIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
@@ -1157,9 +1349,8 @@ export default function PortfolioPage() {
                     );
                 }
 
-                // --- 3. Certificates Section (เกียรติบัตร) 🌟 เพิ่ม Drag & Drop ---
+                // --- 3. Certificates Section (เกียรติบัตร) ---
                 if (key === 'certificates') {
-                    // หากเป็น Admin บังคับแสดงผลทั้งหมดเพื่อความสะดวกในการจัดเรียง
                     const displayCerts = isAdmin || showAllCerts ? certificates : certificates.slice(0, 3);
                     
                     return (
@@ -1188,8 +1379,40 @@ export default function PortfolioPage() {
                                         onDragEnter={(e) => onDragEnterCert(e, index)}
                                         onDragEnd={onDragEndCert}
                                         onDragOver={(e) => e.preventDefault()}
-                                        onClick={() => !isAdmin ? setSelectedCert(cert) : setSelectedCert(cert)}
-                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col 
+                                        
+                                        onTouchStart={(e) => {
+                                            if(!isAdmin) return;
+                                            dragTimer.current = setTimeout(() => {
+                                                setDraggedCertIdx(index);
+                                                document.body.style.overflow = 'hidden';
+                                            }, 500);
+                                        }}
+                                        onTouchMove={(e) => {
+                                            if(!isAdmin) return;
+                                            if(draggedCertIdx === null) {
+                                                if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                return;
+                                            }
+                                            const touch = e.touches[0];
+                                            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                            const item = el?.closest('.dnd-cert');
+                                            if (item) {
+                                                const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
+                                                if (idx !== -1) setDragOverCertIdx(idx);
+                                            }
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            if(!isAdmin) return;
+                                            if(dragTimer.current) clearTimeout(dragTimer.current);
+                                            if(draggedCertIdx !== null) {
+                                                document.body.style.overflow = '';
+                                                onDragEndCert();
+                                            }
+                                        }}
+                                        data-index={index}
+
+                                        onClick={() => setSelectedCert(cert)}
+                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-cert
                                             ${isAdmin ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
                                             ${draggedCertIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
                                             ${dragOverCertIdx === index && draggedCertIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
@@ -1422,7 +1645,7 @@ export default function PortfolioPage() {
                             <p className="text-sm font-semibold text-blue-600 mb-3 uppercase tracking-widest flex items-center gap-2"><Award size={16}/> เกียรติบัตรและรางวัล</p>
                             <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight leading-tight text-gray-900">{selectedCert.title}</h2>
                             
-                            <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-8 space-y-4">
+                            <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl space-y-4">
                                 <div>
                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">หน่วยงานที่มอบให้ (Issuer)</p>
                                     <p className="text-lg font-medium text-gray-800">{selectedCert.issuer}</p>
@@ -1433,6 +1656,12 @@ export default function PortfolioPage() {
                                     <p className="text-lg font-bold text-gray-800">{selectedCert.year}</p>
                                 </div>
                             </div>
+
+                            {selectedCert.desc && (
+                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                    <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{selectedCert.desc}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1458,7 +1687,34 @@ export default function PortfolioPage() {
                                     </datalist>
                                 </div>
                                 
-                                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">วันที่จัดกิจกรรม</label><input type="date" value={pDate} onChange={e=>setPDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm cursor-pointer" /></div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-3">รูปแบบวันที่จัดกิจกรรม <span className="text-blue-500">*</span></label>
+                                    <div className="flex gap-6 mb-4 bg-gray-50 p-2 rounded-xl border border-gray-100 inline-flex">
+                                        <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-3 py-1.5 rounded-lg transition-colors">
+                                            <input type="radio" className="accent-blue-600" checked={pDateMode === 'single'} onChange={() => setPDateMode('single')} /> จัดวันเดียว
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-3 py-1.5 rounded-lg transition-colors">
+                                            <input type="radio" className="accent-blue-600" checked={pDateMode === 'range'} onChange={() => setPDateMode('range')} /> จัดหลายวัน (เป็นช่วง)
+                                        </label>
+                                    </div>
+                                    {pDateMode === 'single' ? (
+                                        <div className="w-full md:w-1/2">
+                                            <input type="date" value={pStartDate} onChange={e=>setPStartDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm cursor-pointer" />
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col md:flex-row items-center gap-3">
+                                            <div className="w-full relative">
+                                                <span className="absolute -top-2 left-3 bg-white px-1 text-[10px] text-gray-400 font-bold">วันที่เริ่มต้น</span>
+                                                <input type="date" value={pStartDate} onChange={e=>setPStartDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm cursor-pointer" />
+                                            </div>
+                                            <span className="text-gray-400 font-bold text-xs uppercase px-2">ถึง</span>
+                                            <div className="w-full relative">
+                                                <span className="absolute -top-2 left-3 bg-white px-1 text-[10px] text-gray-400 font-bold">วันที่สิ้นสุด</span>
+                                                <input type="date" value={pEndDate} onChange={e=>setPEndDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm cursor-pointer" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">ทักษะที่ใช้ (คั่นด้วย ,)</label>
@@ -1504,6 +1760,7 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ชื่อเกียรติบัตร / รางวัล</label><input type="text" required value={cTitle} onChange={e=>setCTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Data Storytelling Excellence" /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">หน่วยงานที่ออกให้</label><input type="text" required value={cIssuer} onChange={e=>setCIssuer(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Bootcamp Co." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ปีที่ได้รับ</label><input type="text" required value={cYear} onChange={e=>setCYear(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น 2026" /></div>
+                            <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label><textarea rows={3} value={cDesc} onChange={e=>setCDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดเกี่ยวกับเกียรติบัตรนี้..."></textarea></div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพ (เพิ่มได้มากกว่า 1 ภาพ)</label>
                                 <input type="file" accept="image/*" multiple onChange={(e) => setCFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
