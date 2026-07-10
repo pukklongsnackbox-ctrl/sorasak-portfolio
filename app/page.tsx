@@ -5,9 +5,8 @@ import { collection, getDocs, query, orderBy, doc, getDoc, setDoc, updateDoc, ad
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { uploadToCloudinary } from '../lib/uploadImage';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // 🌟 ดึงข้อมูล URL หน้าปัจจุบัน
+import { usePathname } from 'next/navigation';
 
-// นำเข้า SVG Icons สไตล์มินิมอล ครบถ้วนทุกตัวแปร
 import { 
     Briefcase, Mail, ExternalLink, User, MapPin, Phone, 
     Code, FileText, Globe, GraduationCap, Edit3, Plus, Trash2, 
@@ -16,14 +15,13 @@ import {
     Award, List, ListOrdered, ChevronDown, ChevronUp, FolderOpen, 
     Wrench, MousePointerClick, Palette, Loader, Image as LucideImage, 
     AlertTriangle, Send, PlusCircle, TrendingUp, AlignLeft, AlignCenter, AlignRight,
-    Lock, ArrowUp, ArrowDown, Eye, EyeOff, Layout, ArrowRight
+    Lock, ArrowUp, ArrowDown, Eye, EyeOff, Layout, ArrowRight, GripHorizontal
 } from 'lucide-react';
 
 export default function PortfolioPage() {
-    const pathname = usePathname() || '/'; // 🌟 เก็บค่าหน้าปัจจุบัน (เช่น '/', '/about')
-    const [activeHash, setActiveHash] = useState(''); // 🌟 เก็บค่า Section ปัจจุบันเวลาเลื่อนหน้าจอ
+    const pathname = usePathname() || '/';
+    const [activeHash, setActiveHash] = useState('');
 
-    // --- State สำหรับผู้ชม (หน้าเว็บหลัก) ---
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -34,15 +32,12 @@ export default function PortfolioPage() {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0); 
 
-    // State สำหรับระบบเกียรติบัตร
     const [certificates, setCertificates] = useState<any[]>([]);
     const [showAllCerts, setShowAllCerts] = useState(false);
 
-    // State สำหรับระบบผลงาน (Showcase)
     const [showcases, setShowcases] = useState<any[]>([]);
     const [showAllShowcases, setShowAllShowcases] = useState(false);
 
-    // State สำหรับการจัดเรียง Section และ Limit
     const [sectionsConfig, setSectionsConfig] = useState<any>({
         projects: { visible: true, order: 1, limit: 10 },
         portfolio: { visible: true, order: 2 },
@@ -62,16 +57,13 @@ export default function PortfolioPage() {
     const [profileData, setProfileData] = useState<any>({}); 
     const [siteStyles, setSiteStyles] = useState<any>({}); 
 
-    // State สำหรับเก็บข้อมูลจากหน้า About เพื่อใช้นำเข้าผลงาน และ โชว์โปรไฟล์หน้า Hero
     const [aboutData, setAboutData] = useState<{profile: any, categories: any[], softwares: any[]}>({ profile: {}, categories: [], softwares: [] });
     const [importSource, setImportSource] = useState("");
 
-    // --- State สำหรับ Admin (Visual Builder & Secret Login) ---
     const [isAdmin, setIsAdmin] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
-    // Editor Tools 
     const [activeField, setActiveField] = useState<string | null>(null);
     const [editLabel, setEditLabel] = useState("");
     const [editColor, setEditColor] = useState("");
@@ -86,12 +78,10 @@ export default function PortfolioPage() {
     const [editShadow, setEditShadow] = useState("");
     const [editPadding, setEditPadding] = useState("");
 
-    // Contact Edit State (สำหรับปุ่มแก้ไขเบอร์/อีเมล)
     const [isEditingContact, setIsEditingContact] = useState(false);
     const [editPhone, setEditPhone] = useState("");
     const [editEmail, setEditEmail] = useState("");
 
-    // Project Modal
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [editingProject, setEditingProject] = useState<any>(null);
     const [pTitle, setPTitle] = useState(''); const [pCategory, setPCategory] = useState('Event Management & Leadership');
@@ -100,7 +90,6 @@ export default function PortfolioPage() {
     const [pFiles, setPFiles] = useState<File[]>([]); const [pExistingImages, setPExistingImages] = useState<string[]>([]);
     const [pIsPublished, setPIsPublished] = useState(true);
 
-    // Certificate Modal State
     const [showCertModal, setShowCertModal] = useState(false);
     const [editingCert, setEditingCert] = useState<any>(null);
     const [cTitle, setCTitle] = useState('');
@@ -109,7 +98,6 @@ export default function PortfolioPage() {
     const [cFiles, setCFiles] = useState<File[]>([]);
     const [cExistingImage, setCExistingImage] = useState('');
 
-    // Showcase Modal State
     const [showShowcaseModal, setShowShowcaseModal] = useState(false);
     const [editingShowcase, setEditingShowcase] = useState<any>(null);
     const [sTitle, setSTitle] = useState('');
@@ -118,17 +106,21 @@ export default function PortfolioPage() {
     const [sFiles, setSFiles] = useState<File[]>([]);
     const [sExistingImage, setSExistingImage] = useState('');
 
-    // Secret Login State
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginEmail, setLoginEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
     const [loginError, setLoginError] = useState("");
 
-    // State สำหรับเปิดรูปใหญ่
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [isWorksOpen, setIsWorksOpen] = useState(false);
 
-    // 🌟 ฟังก์ชันอัจฉริยะ (ScrollSpy) คอยตรวจสอบว่าเลื่อนหน้าจอไปถึงไหนแล้ว เพื่อให้เมนูด้านบนอัปเดตตาม
+    // 🌟 State สำหรับจัดการลากและวาง (Drag and Drop)
+    const [draggedShowcaseIdx, setDraggedShowcaseIdx] = useState<number | null>(null);
+    const [dragOverShowcaseIdx, setDragOverShowcaseIdx] = useState<number | null>(null);
+    
+    const [draggedCertIdx, setDraggedCertIdx] = useState<number | null>(null);
+    const [dragOverCertIdx, setDragOverCertIdx] = useState<number | null>(null);
+
     useEffect(() => {
         if (pathname !== '/') {
             setActiveHash('');
@@ -139,7 +131,6 @@ export default function PortfolioPage() {
             const sections = ['projects', 'portfolio', 'certificates', 'contact'];
             let current = '';
             
-            // ตรวจสอบว่าอยู่บนสุดของหน้าจอ (Hero)
             if (window.scrollY < 100) {
                 setActiveHash('');
                 return;
@@ -149,7 +140,6 @@ export default function PortfolioPage() {
                 const el = document.getElementById(section);
                 if (el) {
                     const rect = el.getBoundingClientRect();
-                    // ถ้า Section นั้นเลื่อนมาอยู่ตรงกลางหน้าจอให้ติด Active
                     if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
                         current = section;
                     }
@@ -159,7 +149,7 @@ export default function PortfolioPage() {
         };
 
         window.addEventListener('scroll', handleScroll);
-        handleScroll(); // เรียกใช้ตอนโหลดครั้งแรกด้วย
+        handleScroll(); 
         return () => window.removeEventListener('scroll', handleScroll);
     }, [pathname]);
 
@@ -203,13 +193,26 @@ export default function PortfolioPage() {
                 const querySnapshot = await getDocs(q);
                 setProjects(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), imageUrls: doc.data().imageUrls || [] })));
 
-                const certQ = query(collection(db, "certificates"), orderBy("year", "desc"));
+                // 🌟 Fetch Certificates & Showcases
+                const certQ = query(collection(db, "certificates"));
                 const certSnap = await getDocs(certQ);
-                setCertificates(certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const loadedCerts = certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                loadedCerts.sort((a: any, b: any) => {
+                    const orderA = a.orderIndex !== undefined ? a.orderIndex : parseInt(a.year || '0') * 1000000;
+                    const orderB = b.orderIndex !== undefined ? b.orderIndex : parseInt(b.year || '0') * 1000000;
+                    return orderB - orderA;
+                });
+                setCertificates(loadedCerts);
 
-                const showcaseQ = query(collection(db, "showcases"), orderBy("createdAt", "desc"));
+                const showcaseQ = query(collection(db, "showcases"));
                 const showcaseSnap = await getDocs(showcaseQ);
-                setShowcases(showcaseSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const loadedShowcases = showcaseSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                loadedShowcases.sort((a: any, b: any) => {
+                    const orderA = a.orderIndex !== undefined ? a.orderIndex : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+                    const orderB = b.orderIndex !== undefined ? b.orderIndex : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+                    return orderB - orderA;
+                });
+                setShowcases(loadedShowcases);
 
             } catch (error) { console.error(error); } finally { setLoading(false); }
         };
@@ -417,7 +420,6 @@ export default function PortfolioPage() {
         const targetIndex = index + direction;
         if (targetIndex < 0 || targetIndex >= newProjects.length) return;
         [newProjects[index], newProjects[targetIndex]] = [newProjects[targetIndex], newProjects[index]];
-        // อัปเดต orderIndex ใน Firebase
         const now = Date.now();
         await Promise.all(newProjects.map((p, i) => updateDoc(doc(db, "projects", p.id), { orderIndex: now - i * 1000 })));
         setProjects(newProjects);
@@ -449,12 +451,10 @@ export default function PortfolioPage() {
             if (editingCert) {
                 await updateDoc(doc(db, "certificates", editingCert.id), data);
                 let updatedCerts = certificates.map(c => c.id === editingCert.id ? { ...c, ...data } : c);
-                updatedCerts.sort((a, b) => parseInt(b.year) - parseInt(a.year));
                 setCertificates(updatedCerts);
             } else {
-                const docRef = await addDoc(collection(db, "certificates"), { ...data, createdAt: new Date() });
+                const docRef = await addDoc(collection(db, "certificates"), { ...data, createdAt: new Date(), orderIndex: Date.now() }); 
                 let newCerts = [{ id: docRef.id, ...data }, ...certificates];
-                newCerts.sort((a, b) => parseInt(b.year) - parseInt(a.year));
                 setCertificates(newCerts);
             }
             setShowCertModal(false); alert("บันทึกเกียรติบัตรสำเร็จ!");
@@ -526,7 +526,7 @@ export default function PortfolioPage() {
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
                 setShowcases(updatedShowcases);
             } else {
-                const docRef = await addDoc(collection(db, "showcases"), { ...data, createdAt: new Date() });
+                const docRef = await addDoc(collection(db, "showcases"), { ...data, createdAt: new Date(), orderIndex: Date.now() });
                 setShowcases([{ id: docRef.id, ...data }, ...showcases]);
             }
             setShowShowcaseModal(false); alert("บันทึกผลงานสำเร็จ!");
@@ -540,6 +540,70 @@ export default function PortfolioPage() {
             setShowShowcaseModal(false);
         }
     };
+
+    // ==========================================
+    // 🌟 ระบบลากและวาง (Drag and Drop Handlers)
+    // ==========================================
+    const onDragStartShowcase = (e: React.DragEvent, index: number) => {
+        if (!isAdmin) return;
+        setDraggedShowcaseIdx(index);
+        e.dataTransfer.effectAllowed = "move";
+    };
+
+    const onDragEnterShowcase = (e: React.DragEvent, index: number) => {
+        if (!isAdmin || draggedShowcaseIdx === null) return;
+        setDragOverShowcaseIdx(index);
+    };
+
+    const onDragEndShowcase = async (e: React.DragEvent) => {
+        if (!isAdmin) return;
+        if (draggedShowcaseIdx !== null && dragOverShowcaseIdx !== null && draggedShowcaseIdx !== dragOverShowcaseIdx) {
+            const items = [...showcases];
+            const draggedItem = items[draggedShowcaseIdx];
+            items.splice(draggedShowcaseIdx, 1);
+            items.splice(dragOverShowcaseIdx, 0, draggedItem);
+            
+            setShowcases(items);
+
+            const now = Date.now();
+            await Promise.all(items.map((item, idx) => 
+                updateDoc(doc(db, "showcases", item.id), { orderIndex: now - idx * 1000 })
+            ));
+        }
+        setDraggedShowcaseIdx(null);
+        setDragOverShowcaseIdx(null);
+    };
+
+    const onDragStartCert = (e: React.DragEvent, index: number) => {
+        if (!isAdmin) return;
+        setDraggedCertIdx(index);
+        e.dataTransfer.effectAllowed = "move";
+    };
+
+    const onDragEnterCert = (e: React.DragEvent, index: number) => {
+        if (!isAdmin || draggedCertIdx === null) return;
+        setDragOverCertIdx(index);
+    };
+
+    const onDragEndCert = async (e: React.DragEvent) => {
+        if (!isAdmin) return;
+        if (draggedCertIdx !== null && dragOverCertIdx !== null && draggedCertIdx !== dragOverCertIdx) {
+            const items = [...certificates];
+            const draggedItem = items[draggedCertIdx];
+            items.splice(draggedCertIdx, 1);
+            items.splice(dragOverCertIdx, 0, draggedItem);
+            
+            setCertificates(items);
+
+            const now = Date.now();
+            await Promise.all(items.map((item, idx) => 
+                updateDoc(doc(db, "certificates", item.id), { orderIndex: now - idx * 1000 })
+            ));
+        }
+        setDraggedCertIdx(null);
+        setDragOverCertIdx(null);
+    };
+    // ==========================================
 
     const sortedSectionKeys = ['projects', 'portfolio', 'certificates'].sort((a, b) => {
         return getSectionConfig(a).order - getSectionConfig(b).order;
@@ -688,7 +752,6 @@ export default function PortfolioPage() {
                                     <span className="text-sm font-bold text-gray-700">{editLabel}</span>
                                 </div>
 
-                                {/* Rich Text Editor Tools */}
                                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-5">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Edit3 size={14}/> จัดรูปแบบข้อความ</h3>
                                     <div className="flex flex-wrap gap-2">
@@ -706,7 +769,6 @@ export default function PortfolioPage() {
                                     <p className="text-[10px] text-gray-400 mt-3">*คลุมดำข้อความบนหน้าจอ แล้วกดเครื่องมือจัดรูปแบบได้เลย</p>
                                 </div>
 
-                                {/* ปรับสไตล์สีและอักษร */}
                                 <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-5">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> ตัวอักษร (Text)</h3>
                                     <div>
@@ -733,7 +795,6 @@ export default function PortfolioPage() {
                                     </div>
                                 </div>
 
-                                {/* ส่วนเครื่องมือสร้างกล่อง/กรอบ (Box Model Upgrade) */}
                                 <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-5 mt-5">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layout size={14}/> กรอบและพื้นหลัง (Box Model)</h3>
                                     
@@ -792,7 +853,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 --- Navigation (ลดความรกด้วย Dropdown และจับตำแหน่ง ScrollSpy) --- 🌟 */}
+            {/* 🌟 --- Navigation --- 🌟 */}
             <nav className="fixed w-full px-6 py-6 flex justify-between items-center z-50 transition-all duration-300 no-print">
                 <div className="max-w-6xl mx-auto w-full flex justify-between items-center bg-white/80 backdrop-blur-md px-6 py-4 rounded-full shadow-sm border border-gray-100">
                     <Link href="/" className="text-xl font-bold tracking-tighter hover:text-gray-900 transition">SORASAK.</Link>
@@ -802,7 +863,6 @@ export default function PortfolioPage() {
                             {pathname === '/' && !activeHash && <span className="absolute -bottom-2 w-1.5 h-1.5 bg-gray-900 rounded-full"></span>}
                         </Link>
 
-                        {/* 🌟 เมนู Works แบบ Dropdown — ใช้ click toggle รองรับ iPad/touch */}
                         <div className="relative py-2">
                             <button
                                 onClick={() => setIsWorksOpen(!isWorksOpen)}
@@ -916,7 +976,7 @@ export default function PortfolioPage() {
             </header>
 
             {/* ==========================================
-                🌟 ส่วนการเรนเดอร์เนื้อหาหลักแบบจัดเรียงลำดับปลอดภัย
+                🌟 ส่วนการเรนเดอร์เนื้อหาหลัก
                 ========================================== */}
             {sortedSectionKeys.map(key => {
                 if (getSectionConfig(key).visible === false && !isAdmin) return null;
@@ -977,7 +1037,6 @@ export default function PortfolioPage() {
                                 )}
                             </div>
 
-                            {/* แสดงกิจกรรมส่วนที่เกินในรูปแบบการ์ดมินิมอลเพื่อประหยัดสเปซหน้าจอ */}
                             {smallProjects.length > 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20 pt-16 border-t border-gray-100">
                                     {smallProjects.map((project:any) => (
@@ -1015,8 +1074,11 @@ export default function PortfolioPage() {
                     );
                 }
 
-                // --- 2. Portfolio Section (ผลงานหน้าหลัก) ---
+                // --- 2. Portfolio Section (ผลงานหน้าหลัก) 🌟 เพิ่ม Drag & Drop ---
                 if (key === 'portfolio') {
+                    // หากเป็น Admin บังคับแสดงผลทั้งหมดเพื่อความสะดวกในการจัดเรียง
+                    const displayShowcases = isAdmin || showAllShowcases ? showcases : showcases.slice(0, 3);
+                    
                     return (
                         <section key="portfolio" id="portfolio" className="max-w-6xl mx-auto px-6 py-24 border-t border-gray-100 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('portfolio').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
@@ -1025,34 +1087,53 @@ export default function PortfolioPage() {
                                     <FolderOpen className="text-gray-900"/> My Portfolio
                                 </h2>
                                 {isAdmin && (
-                                    <button onClick={() => openShowcaseEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
-                                        <Plus size={16}/> เพิ่มผลงาน
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
+                                        <button onClick={() => openShowcaseEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
+                                            <Plus size={16}/> เพิ่มผลงาน
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {(showAllShowcases ? showcases : showcases.slice(0, 3)).map(showcase => (
-                                    <div key={showcase.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => setSelectedShowcase(showcase)}>
+                                {displayShowcases.map((showcase, index) => (
+                                    <div 
+                                        key={showcase.id} 
+                                        draggable={isAdmin}
+                                        onDragStart={(e) => onDragStartShowcase(e, index)}
+                                        onDragEnter={(e) => onDragEnterShowcase(e, index)}
+                                        onDragEnd={onDragEndShowcase}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onClick={() => !isAdmin ? setSelectedShowcase(showcase) : setSelectedShowcase(showcase)}
+                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col 
+                                            ${isAdmin ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
+                                            ${dragOverShowcaseIdx === index && draggedShowcaseIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
+                                        `}
+                                    >
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
                                                 <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
                                                 <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
                                             </div>
                                         )}
-                                        <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
+                                        
+                                        <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
                                             {showcase.imageUrl ? (
                                                 <>
                                                     <img src={showcase.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={showcase.title} />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
-                                                    </div>
+                                                    {!isAdmin && (
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                            <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
+                                                        </div>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <div className="text-gray-300 flex flex-col items-center"><LucideImage size={32} className="mb-2"/><span className="text-xs">ไม่มีรูปภาพ</span></div>
                                             )}
                                         </div>
-                                        <div className="flex-grow flex flex-col justify-between">
+                                        <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                             <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{showcase.title}</h4>
                                             {showcase.desc && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{showcase.desc}</p>}
                                         </div>
@@ -1065,7 +1146,7 @@ export default function PortfolioPage() {
                                 )}
                             </div>
 
-                            {showcases.length > 3 && (
+                            {showcases.length > 3 && !isAdmin && (
                                 <div className="flex justify-center mt-12">
                                     <button onClick={() => setShowAllShowcases(!showAllShowcases)} className="border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-full text-sm font-bold shadow-sm transition flex items-center gap-2 hover:scale-105">
                                         {showAllShowcases ? <>ย่อผลงาน <ChevronUp size={16}/></> : <>ดูผลงานทั้งหมด ({showcases.length}) <ChevronDown size={16}/></>}
@@ -1076,8 +1157,11 @@ export default function PortfolioPage() {
                     );
                 }
 
-                // --- 3. Certificates Section (เกียรติบัตร) ---
+                // --- 3. Certificates Section (เกียรติบัตร) 🌟 เพิ่ม Drag & Drop ---
                 if (key === 'certificates') {
+                    // หากเป็น Admin บังคับแสดงผลทั้งหมดเพื่อความสะดวกในการจัดเรียง
+                    const displayCerts = isAdmin || showAllCerts ? certificates : certificates.slice(0, 3);
+                    
                     return (
                         <section key="certificates" id="certificates" className="max-w-6xl mx-auto px-6 py-24 border-t border-gray-100 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('certificates').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
@@ -1086,34 +1170,52 @@ export default function PortfolioPage() {
                                     <Award className="text-gray-900"/> Certifications & Awards
                                 </h2>
                                 {isAdmin && (
-                                    <button onClick={() => openCertEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
-                                        <Plus size={16}/> เพิ่มเกียรติบัตร
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
+                                        <button onClick={() => openCertEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
+                                            <Plus size={16}/> เพิ่มเกียรติบัตร
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {(showAllCerts ? certificates : certificates.slice(0, 3)).map(cert => (
-                                    <div key={cert.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-sm hover:shadow-lg transition-all relative group flex flex-col cursor-pointer" onClick={() => setSelectedCert(cert)}>
+                                {displayCerts.map((cert, index) => (
+                                    <div 
+                                        key={cert.id} 
+                                        draggable={isAdmin}
+                                        onDragStart={(e) => onDragStartCert(e, index)}
+                                        onDragEnter={(e) => onDragEnterCert(e, index)}
+                                        onDragEnd={onDragEndCert}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onClick={() => !isAdmin ? setSelectedCert(cert) : setSelectedCert(cert)}
+                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col 
+                                            ${isAdmin ? 'cursor-move hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
+                                            ${dragOverCertIdx === index && draggedCertIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
+                                        `}
+                                    >
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
                                                 <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
                                                 <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
                                             </div>
                                         )}
-                                        <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition">
+                                        <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
                                             {cert.imageUrl ? (
                                                 <>
                                                     <img src={cert.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={cert.title} />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
-                                                    </div>
+                                                    {!isAdmin && (
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                            <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
+                                                        </div>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <div className="text-gray-300 flex flex-col items-center"><FileText size={32} className="mb-2"/><span className="text-xs">ไม่มีรูปภาพ</span></div>
                                             )}
                                         </div>
-                                        <div className="flex-grow flex flex-col justify-between">
+                                        <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                             <h4 className="font-bold text-gray-900 mb-3 text-sm leading-snug line-clamp-2">{cert.title}</h4>
                                             <div className="flex justify-between items-center pt-3 border-t border-gray-50">
                                                 <span className="text-[11px] text-gray-500 font-medium truncate pr-4">{cert.issuer}</span>
@@ -1129,7 +1231,7 @@ export default function PortfolioPage() {
                                 )}
                             </div>
 
-                            {certificates.length > 3 && (
+                            {certificates.length > 3 && !isAdmin && (
                                 <div className="flex justify-center mt-12">
                                     <button onClick={() => setShowAllCerts(!showAllCerts)} className="border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-full text-sm font-bold shadow-sm transition flex items-center gap-2 hover:scale-105">
                                         {showAllCerts ? <>ย่อเกียรติบัตร <ChevronUp size={16}/></> : <>ดูเกียรติบัตรทั้งหมด ({certificates.length}) <ChevronDown size={16}/></>}
@@ -1256,7 +1358,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 Modal ผลงาน (Showcase - สไตล์เหมือนหน้าประวัติ) */}
+            {/* Modal ผลงาน (Showcase) */}
             {selectedShowcase && !showShowcaseModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
                     <div className="bg-[#fafafa] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative border border-gray-200">
@@ -1274,7 +1376,6 @@ export default function PortfolioPage() {
                                 {selectedShowcase.link && <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>}
                             </div>
 
-                            {/* แสดงรูปทุกรูป (imageUrls) ถ้ามี, fallback เป็น imageUrl */}
                             {(() => {
                                 const allImages: string[] = selectedShowcase.imageUrls?.length > 0
                                     ? selectedShowcase.imageUrls
@@ -1301,7 +1402,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
+            {/* Modal เกียรติบัตร (Certificates) */}
             {selectedCert && !showCertModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-6xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1353,7 +1454,6 @@ export default function PortfolioPage() {
                                         <option value="องค์การนิสิต (Student Organization)" />
                                         <option value="กิจกรรมคณะและสาขา" />
                                         <option value="โปรเจกต์วิชาการ" />
-                                        <option value="หกะ" />
                                         {aboutData.categories.map((cat: any) => <option key={cat.id} value={cat.title} />)}
                                     </datalist>
                                 </div>
@@ -1428,7 +1528,6 @@ export default function PortfolioPage() {
                         
                         <form onSubmit={handleSaveShowcase} className="space-y-5">
                             
-                            {/* ส่วนเพิ่มการนำเข้าจากหน้าประวัติ (แสดงเฉพาะตอนสร้างใหม่) */}
                             {!editingShowcase && availableImportOptions.length > 0 && (
                                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-2">
                                     <label className="block text-xs font-bold text-blue-800 mb-2 flex items-center gap-2">
