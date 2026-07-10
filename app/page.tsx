@@ -128,6 +128,29 @@ export default function PortfolioPage() {
     const [draggedCertIdx, setDraggedCertIdx] = useState<number | null>(null);
     const [dragOverCertIdx, setDragOverCertIdx] = useState<number | null>(null);
 
+    // 🌟 ล็อกหน้าจอ iPad/Mobile ห้ามเลื่อนเวลากำลังลาก
+    useEffect(() => {
+        const preventScroll = (e: TouchEvent) => {
+            if (draggedProjectIdx !== null || draggedShowcaseIdx !== null || draggedCertIdx !== null) {
+                e.preventDefault();
+            }
+        };
+        document.addEventListener('touchmove', preventScroll, { passive: false });
+        return () => {
+            document.removeEventListener('touchmove', preventScroll);
+        };
+    }, [draggedProjectIdx, draggedShowcaseIdx, draggedCertIdx]);
+
+    useEffect(() => {
+        if (draggedProjectIdx !== null || draggedShowcaseIdx !== null || draggedCertIdx !== null) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+        } else {
+            document.body.style.overflow = '';
+            document.body.style.touchAction = '';
+        }
+    }, [draggedProjectIdx, draggedShowcaseIdx, draggedCertIdx]);
+
     useEffect(() => {
         if (pathname !== '/') {
             setActiveHash('');
@@ -419,17 +442,25 @@ export default function PortfolioPage() {
                 finalDateStr = `${formatDateStr(pStartDate)} - ${formatDateStr(pEndDate)}`;
             }
 
+            // 🌟 คำนวณหาค่า orderIndex ให้น้อยที่สุดเพื่อไปอยู่ด้านล่าง
+            let newOrderIndex = Date.now();
+            if (!editingProject && projects.length > 0) {
+                newOrderIndex = Math.min(...projects.map(p => p.orderIndex || 0)) - 1000;
+            }
+
             const data = { 
                 title: pTitle, category: pCategory, 
                 dateMode: pDateMode, startDate: pStartDate, endDate: pEndDate, date: finalDateStr, 
-                description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished 
+                description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished,
+                orderIndex: editingProject ? editingProject.orderIndex : newOrderIndex
             };
+
             if (editingProject) {
                 await updateDoc(doc(db, "projects", editingProject.id), data);
                 setProjects(projects.map(p => p.id === editingProject.id ? { ...p, ...data } : p));
             } else {
-                const docRef = await addDoc(collection(db, "projects"), { ...data, createdAt: new Date(), orderIndex: Date.now() });
-                setProjects([{ id: docRef.id, ...data, orderIndex: Date.now() }, ...projects].sort((a,b)=>(b.orderIndex||0)-(a.orderIndex||0)));
+                const docRef = await addDoc(collection(db, "projects"), { ...data, createdAt: new Date() });
+                setProjects([...projects, { id: docRef.id, ...data }].sort((a,b)=>(b.orderIndex||0)-(a.orderIndex||0)));
             }
             setShowProjectModal(false); alert("บันทึกผลงานสำเร็จ!");
         } catch (error) { console.error(error); alert("เกิดข้อผิดพลาด"); } finally { setIsSaving(false); }
@@ -471,14 +502,23 @@ export default function PortfolioPage() {
                 imageUrls = uploaded.filter(Boolean) as string[];
             }
             const finalImageUrl = imageUrls[0] || '';
-            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls };
+
+            // 🌟 คำนวณหาค่า orderIndex ให้น้อยที่สุดเพื่อไปอยู่ด้านล่าง
+            let newOrderIndex = Date.now();
+            if (!editingCert && certificates.length > 0) {
+                newOrderIndex = Math.min(...certificates.map(c => c.orderIndex !== undefined ? c.orderIndex : parseInt(c.year || '0') * 1000000)) - 1000;
+            }
+
+            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls, orderIndex: editingCert ? editingCert.orderIndex : newOrderIndex };
             if (editingCert) {
                 await updateDoc(doc(db, "certificates", editingCert.id), data);
                 let updatedCerts = certificates.map(c => c.id === editingCert.id ? { ...c, ...data } : c);
+                updatedCerts.sort((a, b) => (b.orderIndex !== undefined ? b.orderIndex : parseInt(b.year || '0')*1000000) - (a.orderIndex !== undefined ? a.orderIndex : parseInt(a.year || '0')*1000000));
                 setCertificates(updatedCerts);
             } else {
-                const docRef = await addDoc(collection(db, "certificates"), { ...data, createdAt: new Date(), orderIndex: Date.now() }); 
-                let newCerts = [{ id: docRef.id, ...data }, ...certificates];
+                const docRef = await addDoc(collection(db, "certificates"), { ...data, createdAt: new Date() }); 
+                let newCerts = [...certificates, { id: docRef.id, ...data }];
+                newCerts.sort((a, b) => (b.orderIndex !== undefined ? b.orderIndex : parseInt(b.year || '0')*1000000) - (a.orderIndex !== undefined ? a.orderIndex : parseInt(a.year || '0')*1000000));
                 setCertificates(newCerts);
             }
             setShowCertModal(false); alert("บันทึกเกียรติบัตรสำเร็จ!");
@@ -544,14 +584,22 @@ export default function PortfolioPage() {
             }
             const finalImageUrl = imageUrls[0] || '';
             const textClearDesc = sDesc.replace(/<\/?[^>]+(>|$)/g, "");
-            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls };
+            
+            // 🌟 คำนวณหาค่า orderIndex ให้น้อยที่สุดเพื่อไปอยู่ด้านล่าง
+            let newOrderIndex = Date.now();
+            if (!editingShowcase && showcases.length > 0) {
+                newOrderIndex = Math.min(...showcases.map(s => s.orderIndex !== undefined ? s.orderIndex : (s.createdAt?.toMillis ? s.createdAt.toMillis() : 0))) - 1000;
+            }
+
+            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
+                updatedShowcases.sort((a,b) => (b.orderIndex||0) - (a.orderIndex||0));
                 setShowcases(updatedShowcases);
             } else {
-                const docRef = await addDoc(collection(db, "showcases"), { ...data, createdAt: new Date(), orderIndex: Date.now() });
-                setShowcases([{ id: docRef.id, ...data }, ...showcases]);
+                const docRef = await addDoc(collection(db, "showcases"), { ...data, createdAt: new Date() });
+                setShowcases([...showcases, { id: docRef.id, ...data }].sort((a,b) => (b.orderIndex||0) - (a.orderIndex||0)));
             }
             setShowShowcaseModal(false); alert("บันทึกผลงานสำเร็จ!");
         } catch (error) { console.error(error); alert("เกิดข้อผิดพลาด"); } finally { setIsSaving(false); }
@@ -566,7 +614,7 @@ export default function PortfolioPage() {
     };
 
     // ==========================================
-    // 🌟 ระบบลากและวาง (Drag and Drop Handlers)
+    // 🌟 ระบบลากและวาง (Drag and Drop Handlers) สลับที่ทันทีเหมือน Widget
     // ==========================================
     const onDragStartProject = (e: React.DragEvent, index: number) => {
         if (!isAdmin || getSectionConfig('projects').sortMode === 'date') return;
@@ -574,25 +622,24 @@ export default function PortfolioPage() {
         e.dataTransfer.effectAllowed = "move";
     };
     const onDragEnterProject = (e: React.DragEvent, index: number) => {
-        if (!isAdmin || draggedProjectIdx === null) return;
-        setDragOverProjectIdx(index);
-    };
-    const onDragEndProject = async () => {
-        if (!isAdmin) return;
-        if (draggedProjectIdx !== null && dragOverProjectIdx !== null && draggedProjectIdx !== dragOverProjectIdx) {
+        if (!isAdmin || draggedProjectIdx === null || getSectionConfig('projects').sortMode === 'date') return;
+        if (draggedProjectIdx !== index) {
             const items = [...projects];
             const draggedItem = items[draggedProjectIdx];
             items.splice(draggedProjectIdx, 1);
-            items.splice(dragOverProjectIdx, 0, draggedItem);
-            
+            items.splice(index, 0, draggedItem);
             setProjects(items);
-            const now = Date.now();
-            await Promise.all(items.map((item, idx) => 
-                updateDoc(doc(db, "projects", item.id), { orderIndex: now - idx * 1000 })
-            ));
+            setDraggedProjectIdx(index);
         }
+    };
+    const onDragEndProject = async () => {
+        if (!isAdmin || getSectionConfig('projects').sortMode === 'date') return;
         setDraggedProjectIdx(null);
         setDragOverProjectIdx(null);
+        const now = Date.now();
+        await Promise.all(projects.map((item, idx) => 
+            updateDoc(doc(db, "projects", item.id), { orderIndex: now - idx * 1000 })
+        ));
     };
 
     const onDragStartShowcase = (e: React.DragEvent, index: number) => {
@@ -602,24 +649,23 @@ export default function PortfolioPage() {
     };
     const onDragEnterShowcase = (e: React.DragEvent, index: number) => {
         if (!isAdmin || draggedShowcaseIdx === null) return;
-        setDragOverShowcaseIdx(index);
-    };
-    const onDragEndShowcase = async () => {
-        if (!isAdmin) return;
-        if (draggedShowcaseIdx !== null && dragOverShowcaseIdx !== null && draggedShowcaseIdx !== dragOverShowcaseIdx) {
+        if (draggedShowcaseIdx !== index) {
             const items = [...showcases];
             const draggedItem = items[draggedShowcaseIdx];
             items.splice(draggedShowcaseIdx, 1);
-            items.splice(dragOverShowcaseIdx, 0, draggedItem);
-            
+            items.splice(index, 0, draggedItem);
             setShowcases(items);
-            const now = Date.now();
-            await Promise.all(items.map((item, idx) => 
-                updateDoc(doc(db, "showcases", item.id), { orderIndex: now - idx * 1000 })
-            ));
+            setDraggedShowcaseIdx(index);
         }
+    };
+    const onDragEndShowcase = async () => {
+        if (!isAdmin) return;
         setDraggedShowcaseIdx(null);
         setDragOverShowcaseIdx(null);
+        const now = Date.now();
+        await Promise.all(showcases.map((item, idx) => 
+            updateDoc(doc(db, "showcases", item.id), { orderIndex: now - idx * 1000 })
+        ));
     };
 
     const onDragStartCert = (e: React.DragEvent, index: number) => {
@@ -629,24 +675,23 @@ export default function PortfolioPage() {
     };
     const onDragEnterCert = (e: React.DragEvent, index: number) => {
         if (!isAdmin || draggedCertIdx === null) return;
-        setDragOverCertIdx(index);
-    };
-    const onDragEndCert = async () => {
-        if (!isAdmin) return;
-        if (draggedCertIdx !== null && dragOverCertIdx !== null && draggedCertIdx !== dragOverCertIdx) {
+        if (draggedCertIdx !== index) {
             const items = [...certificates];
             const draggedItem = items[draggedCertIdx];
             items.splice(draggedCertIdx, 1);
-            items.splice(dragOverCertIdx, 0, draggedItem);
-            
+            items.splice(index, 0, draggedItem);
             setCertificates(items);
-            const now = Date.now();
-            await Promise.all(items.map((item, idx) => 
-                updateDoc(doc(db, "certificates", item.id), { orderIndex: now - idx * 1000 })
-            ));
+            setDraggedCertIdx(index);
         }
+    };
+    const onDragEndCert = async () => {
+        if (!isAdmin) return;
         setDraggedCertIdx(null);
         setDragOverCertIdx(null);
+        const now = Date.now();
+        await Promise.all(certificates.map((item, idx) => 
+            updateDoc(doc(db, "certificates", item.id), { orderIndex: now - idx * 1000 })
+        ));
     };
     // ==========================================
 
@@ -818,7 +863,7 @@ export default function PortfolioPage() {
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false, ''); }} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 underline text-gray-800 shadow-sm">U</button>
                                         <div className="w-px bg-gray-300 mx-1"></div>
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertUnorderedList', false, ''); }} title="List" className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><List size={14}/></button>
-                                        <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertOrderedList', false, ''); }} title="Number List" className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><List Ordered size={14}/></button>
+                                        <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertOrderedList', false, ''); }} title="Number List" className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><ListOrdered size={14}/></button>
                                         <div className="w-px bg-gray-300 mx-1"></div>
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyLeft', false, ''); }} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><AlignLeft size={14}/></button>
                                         <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyCenter', false, ''); }} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-800 shadow-sm"><AlignCenter size={14}/></button>
@@ -911,7 +956,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 --- Navigation --- 🌟 */}
+            {/* 🌟 --- Navigation (ลดความรกด้วย Dropdown และจับตำแหน่ง ScrollSpy) --- 🌟 */}
             <nav className="fixed w-full px-6 py-6 flex justify-between items-center z-50 transition-all duration-300 no-print">
                 <div className="max-w-6xl mx-auto w-full flex justify-between items-center bg-white/80 backdrop-blur-md px-6 py-4 rounded-full shadow-sm border border-gray-100">
                     <Link href="/" className="text-xl font-bold tracking-tighter hover:text-gray-900 transition">SORASAK.</Link>
@@ -1074,7 +1119,6 @@ export default function PortfolioPage() {
                                                 className={`relative group/project transition-all duration-300 dnd-project
                                                     ${isAdmin && !isDateSort ? 'cursor-move select-none [-webkit-touch-callout:none]' : ''}
                                                     ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : ''}
-                                                    ${dragOverProjectIdx === globalIndex && draggedProjectIdx !== globalIndex ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20 p-4 rounded-3xl' : 'border-transparent border-2'}
                                                 `}
                                                 draggable={isAdmin && !isDateSort}
                                                 onDragStart={(e) => onDragStartProject(e, globalIndex)}
@@ -1087,7 +1131,6 @@ export default function PortfolioPage() {
                                                     if(!isAdmin || isDateSort) return;
                                                     dragTimer.current = setTimeout(() => {
                                                         setDraggedProjectIdx(globalIndex);
-                                                        document.body.style.overflow = 'hidden';
                                                     }, 500);
                                                 }}
                                                 onTouchMove={(e) => {
@@ -1101,14 +1144,20 @@ export default function PortfolioPage() {
                                                     const item = el?.closest('.dnd-project');
                                                     if (item) {
                                                         const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
-                                                        if (idx !== -1) setDragOverProjectIdx(idx);
+                                                        if (idx !== -1 && idx !== draggedProjectIdx) {
+                                                            const items = [...projects];
+                                                            const draggedItem = items[draggedProjectIdx];
+                                                            items.splice(draggedProjectIdx, 1);
+                                                            items.splice(idx, 0, draggedItem);
+                                                            setProjects(items);
+                                                            setDraggedProjectIdx(idx);
+                                                        }
                                                     }
                                                 }}
                                                 onTouchEnd={(e) => {
                                                     if(!isAdmin || isDateSort) return;
                                                     if(dragTimer.current) clearTimeout(dragTimer.current);
                                                     if(draggedProjectIdx !== null) {
-                                                        document.body.style.overflow = '';
                                                         onDragEndProject();
                                                     }
                                                 }}
@@ -1159,8 +1208,7 @@ export default function PortfolioPage() {
                                                 key={project.id} 
                                                 className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
                                                     ${isAdmin && !isDateSort ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2' : 'border-gray-100'}
-                                                    ${dragOverProjectIdx === globalIndex && draggedProjectIdx !== globalIndex ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
                                                 `}
                                                 draggable={isAdmin && !isDateSort}
                                                 onDragStart={(e) => onDragStartProject(e, globalIndex)}
@@ -1173,7 +1221,6 @@ export default function PortfolioPage() {
                                                     if(!isAdmin || isDateSort) return;
                                                     dragTimer.current = setTimeout(() => {
                                                         setDraggedProjectIdx(globalIndex);
-                                                        document.body.style.overflow = 'hidden';
                                                     }, 500);
                                                 }}
                                                 onTouchMove={(e) => {
@@ -1187,14 +1234,20 @@ export default function PortfolioPage() {
                                                     const item = el?.closest('.dnd-project');
                                                     if (item) {
                                                         const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
-                                                        if (idx !== -1) setDragOverProjectIdx(idx);
+                                                        if (idx !== -1 && idx !== draggedProjectIdx) {
+                                                            const items = [...projects];
+                                                            const draggedItem = items[draggedProjectIdx];
+                                                            items.splice(draggedProjectIdx, 1);
+                                                            items.splice(idx, 0, draggedItem);
+                                                            setProjects(items);
+                                                            setDraggedProjectIdx(idx);
+                                                        }
                                                     }
                                                 }}
                                                 onTouchEnd={(e) => {
                                                     if(!isAdmin || isDateSort) return;
                                                     if(dragTimer.current) clearTimeout(dragTimer.current);
                                                     if(draggedProjectIdx !== null) {
-                                                        document.body.style.overflow = '';
                                                         onDragEndProject();
                                                     }
                                                 }}
@@ -1273,7 +1326,6 @@ export default function PortfolioPage() {
                                             if(!isAdmin) return;
                                             dragTimer.current = setTimeout(() => {
                                                 setDraggedShowcaseIdx(index);
-                                                document.body.style.overflow = 'hidden';
                                             }, 500);
                                         }}
                                         onTouchMove={(e) => {
@@ -1287,14 +1339,20 @@ export default function PortfolioPage() {
                                             const item = el?.closest('.dnd-showcase');
                                             if (item) {
                                                 const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
-                                                if (idx !== -1) setDragOverShowcaseIdx(idx);
+                                                if (idx !== -1 && idx !== draggedShowcaseIdx) {
+                                                    const items = [...showcases];
+                                                    const draggedItem = items[draggedShowcaseIdx];
+                                                    items.splice(draggedShowcaseIdx, 1);
+                                                    items.splice(idx, 0, draggedItem);
+                                                    setShowcases(items);
+                                                    setDraggedShowcaseIdx(idx);
+                                                }
                                             }
                                         }}
                                         onTouchEnd={(e) => {
                                             if(!isAdmin) return;
                                             if(dragTimer.current) clearTimeout(dragTimer.current);
                                             if(draggedShowcaseIdx !== null) {
-                                                document.body.style.overflow = '';
                                                 onDragEndShowcase();
                                             }
                                         }}
@@ -1303,8 +1361,7 @@ export default function PortfolioPage() {
                                         onClick={() => setSelectedShowcase(showcase)}
                                         className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-showcase
                                             ${isAdmin ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
-                                            ${dragOverShowcaseIdx === index && draggedShowcaseIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
+                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
                                         `}
                                     >
                                         {isAdmin && (
@@ -1388,7 +1445,6 @@ export default function PortfolioPage() {
                                             if(!isAdmin) return;
                                             dragTimer.current = setTimeout(() => {
                                                 setDraggedCertIdx(index);
-                                                document.body.style.overflow = 'hidden';
                                             }, 500);
                                         }}
                                         onTouchMove={(e) => {
@@ -1402,14 +1458,20 @@ export default function PortfolioPage() {
                                             const item = el?.closest('.dnd-cert');
                                             if (item) {
                                                 const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
-                                                if (idx !== -1) setDragOverCertIdx(idx);
+                                                if (idx !== -1 && idx !== draggedCertIdx) {
+                                                    const items = [...certificates];
+                                                    const draggedItem = items[draggedCertIdx];
+                                                    items.splice(draggedCertIdx, 1);
+                                                    items.splice(idx, 0, draggedItem);
+                                                    setCertificates(items);
+                                                    setDraggedCertIdx(idx);
+                                                }
                                             }
                                         }}
                                         onTouchEnd={(e) => {
                                             if(!isAdmin) return;
                                             if(dragTimer.current) clearTimeout(dragTimer.current);
                                             if(draggedCertIdx !== null) {
-                                                document.body.style.overflow = '';
                                                 onDragEndCert();
                                             }
                                         }}
@@ -1418,8 +1480,7 @@ export default function PortfolioPage() {
                                         onClick={() => setSelectedCert(cert)}
                                         className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-cert
                                             ${isAdmin ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2 shadow-none' : 'border-gray-100'}
-                                            ${dragOverCertIdx === index && draggedCertIdx !== index ? 'border-blue-500 border-2 shadow-2xl scale-[1.02] bg-blue-50/20' : ''}
+                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
                                         `}
                                     >
                                         {isAdmin && (
@@ -1585,7 +1646,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* Modal ผลงาน (Showcase) */}
+            {/* 🌟 Modal ผลงาน (Showcase - สไตล์เหมือนหน้าประวัติ) */}
             {selectedShowcase && !showShowcaseModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
                     <div className="bg-[#fafafa] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative border border-gray-200">
@@ -1603,6 +1664,7 @@ export default function PortfolioPage() {
                                 {selectedShowcase.link && <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>}
                             </div>
 
+                            {/* แสดงรูปทุกรูป (imageUrls) ถ้ามี, fallback เป็น imageUrl */}
                             {(() => {
                                 const allImages: string[] = selectedShowcase.imageUrls?.length > 0
                                     ? selectedShowcase.imageUrls
@@ -1629,7 +1691,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* Modal เกียรติบัตร (Certificates) */}
+            {/* 🌟 Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
             {selectedCert && !showCertModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-6xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1649,7 +1711,7 @@ export default function PortfolioPage() {
                             <p className="text-sm font-semibold text-blue-600 mb-3 uppercase tracking-widest flex items-center gap-2"><Award size={16}/> เกียรติบัตรและรางวัล</p>
                             <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight leading-tight text-gray-900">{selectedCert.title}</h2>
                             
-                            <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl space-y-4">
+                            <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-8 space-y-4">
                                 <div>
                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">หน่วยงานที่มอบให้ (Issuer)</p>
                                     <p className="text-lg font-medium text-gray-800">{selectedCert.issuer}</p>
@@ -1687,6 +1749,7 @@ export default function PortfolioPage() {
                                         <option value="องค์การนิสิต (Student Organization)" />
                                         <option value="กิจกรรมคณะและสาขา" />
                                         <option value="โปรเจกต์วิชาการ" />
+                                        <option value="หกะ" />
                                         {aboutData.categories.map((cat: any) => <option key={cat.id} value={cat.title} />)}
                                     </datalist>
                                 </div>
@@ -1789,6 +1852,7 @@ export default function PortfolioPage() {
                         
                         <form onSubmit={handleSaveShowcase} className="space-y-5">
                             
+                            {/* ส่วนเพิ่มการนำเข้าจากหน้าประวัติ (แสดงเฉพาะตอนสร้างใหม่) */}
                             {!editingShowcase && availableImportOptions.length > 0 && (
                                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-2">
                                     <label className="block text-xs font-bold text-blue-800 mb-2 flex items-center gap-2">
