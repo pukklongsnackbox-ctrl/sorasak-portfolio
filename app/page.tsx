@@ -18,10 +18,10 @@ import {
     Lock, ArrowUp, ArrowDown, Eye, EyeOff, Layout, ArrowRight, GripHorizontal, Calendar
 } from 'lucide-react';
 
-// 🌟 Helper Function สำหรับลบ HTML Tags ตอนพรีวิวในการ์ดเล็ก
+// 🌟 Helper Function สำหรับลบ HTML Tags และโค้ดขยะ ตอนพรีวิวในการ์ดเล็ก
 const stripHtml = (html: string) => {
     if (!html) return "";
-    return html.replace(/<[^>]*>?/gm, '');
+    return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 };
 
 // 🌟 Component เครื่องมือจัดรูปแบบข้อความ (Rich Text Editor) สำหรับ Admin
@@ -147,7 +147,6 @@ export default function PortfolioPage() {
     const [editingShowcase, setEditingShowcase] = useState<any>(null);
     const [sTitle, setSTitle] = useState('');
     const [sDesc, setSDesc] = useState('');
-    const [sLink, setSLink] = useState('');
     const [sFiles, setSFiles] = useState<File[]>([]);
     const [sExistingImages, setSExistingImages] = useState<string[]>([]);
     const [sLinks, setSLinks] = useState<{label: string, url: string}[]>([]);
@@ -598,7 +597,6 @@ export default function PortfolioPage() {
         const selected = availableImportOptions[parseInt(idx)].data;
         setSTitle(selected.title || "");
         setSDesc(selected.desc || "");
-        setSLink(selected.link || "");
         if (selected.imageUrls && selected.imageUrls.length > 0) {
             setSExistingImages(selected.imageUrls); 
         }
@@ -607,11 +605,11 @@ export default function PortfolioPage() {
     const openShowcaseEditor = (showcase: any = null) => {
         setImportSource(""); 
         if (showcase) {
-            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); setSLink(showcase.link || ''); 
+            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); 
             setSExistingImages(showcase.imageUrls || (showcase.imageUrl ? [showcase.imageUrl] : []));
             setSLinks(showcase.links || []);
         } else {
-            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImages([]); setSLinks([]);
+            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSExistingImages([]); setSLinks([]);
         }
         setSFiles([]); setShowShowcaseModal(true);
     };
@@ -625,14 +623,13 @@ export default function PortfolioPage() {
                 finalImageUrls = [...finalImageUrls, ...uploaded.filter(Boolean) as string[]];
             }
             const finalImageUrl = finalImageUrls[0] || '';
-            const textClearDesc = sDesc.replace(/<\/?[^>]+(>|$)/g, "");
             
             let newOrderIndex = Date.now();
             if (!editingShowcase && showcases.length > 0) {
                 newOrderIndex = Math.min(...showcases.map(s => s.orderIndex !== undefined ? s.orderIndex : (s.createdAt?.toMillis ? s.createdAt.toMillis() : 0))) - 1000;
             }
 
-            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
+            const data = { title: sTitle, desc: sDesc, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
@@ -800,12 +797,12 @@ export default function PortfolioPage() {
             
             {/* 🌟 สไตล์รองรับ Rich Text Editor ในหน้าต่างโชว์ผลงาน */}
             <style dangerouslySetInnerHTML={{__html: `
-                .rich-text-content p { margin-bottom: 1.25rem; min-height: 1rem; line-height: 1.8; }
-                .rich-text-content ul, .rich-text-content ol { margin-bottom: 1.25rem; line-height: 1.8; }
-                .rich-text-content ul { list-style-type: disc !important; padding-left: 1.5rem !important; }
-                .rich-text-content ol { list-style-type: decimal !important; padding-left: 1.5rem !important; }
+                .rich-text-content p { margin-bottom: 1rem; line-height: 1.7; }
+                .rich-text-content ul, .rich-text-content ol { margin-bottom: 1rem; line-height: 1.7; padding-left: 1.5rem !important; }
+                .rich-text-content ul { list-style-type: disc !important; }
+                .rich-text-content ol { list-style-type: decimal !important; }
                 .rich-text-content li { margin-bottom: 0.5rem; }
-                .rich-text-content b, .rich-text-content strong { font-weight: bold !important; }
+                .rich-text-content b, .rich-text-content strong { font-weight: bold !important; color: #111827; }
                 .rich-text-content i, .rich-text-content em { font-style: italic !important; }
                 .rich-text-content u { text-decoration: underline !important; }
             `}} />
@@ -1342,7 +1339,6 @@ export default function PortfolioPage() {
                                                 </div>
                                                 <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                                     <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
-                                                    {/* 🌟 สีหมวดหมู่กลับเป็นเทาตามเดิม */}
                                                     {project.category && <p className="text-[11px] text-gray-400 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
                                                     {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{stripHtml(project.description)}</p>}
                                                 </div>
@@ -1369,7 +1365,7 @@ export default function PortfolioPage() {
                                 {isAdmin && (
                                     <div className="flex gap-2">
                                         <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
-                                        <button onClick={() => openShowcaseEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
+                                        <button onClick={() => openShowcaseEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
                                             <Plus size={16}/> เพิ่มผลงาน
                                         </button>
                                     </div>
@@ -1701,10 +1697,11 @@ export default function PortfolioPage() {
                         </div>
                         <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                             <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest">{selectedProject.category} {selectedProject.date && `| ${selectedProject.date}`}</p>
-                            <h2 className="text-2xl md:text-4xl font-bold mb-6 leading-relaxed text-gray-900">{selectedProject.title}</h2>
+                            {/* 🌟 ปรับขนาดหัวข้อให้อ่านง่าย */}
+                            <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-snug text-gray-900">{selectedProject.title}</h2>
                             {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
                             
-                            {/* 🌟 ลิงก์ผลงาน Projects */}
+                            {/* ลิงก์ผลงาน Projects */}
                             {selectedProject.links && selectedProject.links.length > 0 && (
                                 <div className="flex flex-wrap gap-3 mb-8">
                                     {selectedProject.links.map((link: any, i: number) => (
@@ -1722,13 +1719,14 @@ export default function PortfolioPage() {
                                     <div className="text-sm text-blue-900 leading-relaxed rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.impact }}></div>
                                 </div>
                             )}
-                            <div className="text-gray-700 leading-loose text-base md:text-lg flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.description }}></div>
+                            {/* 🌟 ปรับสไตล์คำบรรยายให้อ่านง่าย */}
+                            <div className="text-gray-600 text-sm md:text-base flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.description }}></div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* 🌟 Modal ผลงาน (Showcase - สไตล์แยก 2 ฝั่ง ซ้าย/ขวา เหมือน Projects) */}
+            {/* Modal ผลงาน (Showcase - สไตล์แยก 2 ฝั่ง ซ้าย/ขวา เหมือน Projects) */}
             {selectedShowcase && !showShowcaseModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-7xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1762,7 +1760,8 @@ export default function PortfolioPage() {
                                     </div>
                                     <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                                         <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">PORTFOLIO</p>
-                                        <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-relaxed text-gray-900">{selectedShowcase.title}</h2>
+                                        {/* 🌟 ปรับขนาดหัวข้อให้อ่านง่าย */}
+                                        <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-snug text-gray-900">{selectedShowcase.title}</h2>
                                         
                                         <div className="flex flex-wrap gap-3 mb-8">
                                             {selectedShowcase.link && (
@@ -1779,7 +1778,8 @@ export default function PortfolioPage() {
 
                                         <div className="h-px w-full bg-gray-100 mb-8"></div>
                                         
-                                        <div className="text-gray-700 leading-loose text-base md:text-lg flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedShowcase.desc }}></div>
+                                        {/* 🌟 ปรับสไตล์คำบรรยายให้อ่านง่าย */}
+                                        <div className="text-gray-600 text-sm md:text-base flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedShowcase.desc }}></div>
                                     </div>
                                 </>
                             );
@@ -1788,7 +1788,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
+            {/* Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
             {selectedCert && !showCertModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-6xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1815,7 +1815,8 @@ export default function PortfolioPage() {
                         
                         <div className="w-full md:w-1/2 p-8 md:p-16 overflow-y-auto max-h-[60vh] md:max-h-full bg-white flex flex-col justify-center">
                             <p className="text-sm font-semibold text-blue-600 mb-3 uppercase tracking-widest flex items-center gap-2"><Award size={16}/> เกียรติบัตรและรางวัล</p>
-                            <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-relaxed text-gray-900">{selectedCert.title}</h2>
+                            {/* 🌟 ปรับขนาดหัวข้อให้อ่านง่าย */}
+                            <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-snug text-gray-900">{selectedCert.title}</h2>
                             
                             <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-8 space-y-4">
                                 <div>
@@ -1831,11 +1832,12 @@ export default function PortfolioPage() {
 
                             {selectedCert.desc && (
                                 <div className="pt-6 border-t border-gray-100">
-                                    <div className="text-gray-700 leading-loose text-base md:text-lg rich-text-content" dangerouslySetInnerHTML={{ __html: selectedCert.desc }}></div>
+                                    {/* 🌟 ปรับสไตล์คำบรรยายให้อ่านง่าย */}
+                                    <div className="text-gray-600 text-sm md:text-base rich-text-content" dangerouslySetInnerHTML={{ __html: selectedCert.desc }}></div>
                                 </div>
                             )}
 
-                            {/* 🌟 ลิงก์ผลงาน Certificates */}
+                            {/* ลิงก์ผลงาน Certificates */}
                             {selectedCert.links && selectedCert.links.length > 0 && (
                                 <div className="flex flex-wrap gap-3 mt-6">
                                     {selectedCert.links.map((link: any, i: number) => (
@@ -1953,7 +1955,7 @@ export default function PortfolioPage() {
                             
                             <div className="flex gap-4 pt-4 border-t border-gray-100">
                                 {editingProject && <button type="button" onClick={() => handleDeleteProject(editingProject.id)} className="px-6 py-4 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition">ลบกิจกรรม</button>}
-                                <button type="submit" disabled={isSaving} className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition flex justify-center items-center gap-2">{isSaving ? <><Loader size={18} className="animate-spin"/> กำลังบันทึก...</> : <><Save size={18}/> บันทึกกิจกรรม</>}</button>
+                                <button type="submit" disabled={isSaving} className="flex-1 bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition flex justify-center items-center gap-2">{isSaving ? <><Loader size={18} className="animate-spin"/> กำลังบันทึก...</> : <><Save size={18}/> บันทึกกิจกรรม</>}</button>
                             </div>
                         </form>
                     </div>
