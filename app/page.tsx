@@ -268,8 +268,21 @@ export default function PortfolioPage() {
         return () => clearInterval(interval);
     }, [selectedProject]);
 
-    const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % selectedProject.imageUrls.length);
-    const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + selectedProject.imageUrls.length) % selectedProject.imageUrls.length);
+    // เลื่อนรูปของ Modal ใดๆ ที่ใช้ currentImageIndex (เช่น projects, showcases)
+    const nextImage = () => {
+        if (selectedProject) setCurrentImageIndex((prev) => (prev + 1) % selectedProject.imageUrls.length);
+        else if (selectedShowcase) {
+            const allImages = selectedShowcase.imageUrls?.length > 0 ? selectedShowcase.imageUrls : (selectedShowcase.imageUrl ? [selectedShowcase.imageUrl] : []);
+            setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+        }
+    };
+    const prevImage = () => {
+        if (selectedProject) setCurrentImageIndex((prev) => (prev - 1 + selectedProject.imageUrls.length) % selectedProject.imageUrls.length);
+        else if (selectedShowcase) {
+            const allImages = selectedShowcase.imageUrls?.length > 0 ? selectedShowcase.imageUrls : (selectedShowcase.imageUrl ? [selectedShowcase.imageUrl] : []);
+            setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+        }
+    };
 
     const getSectionConfig = (key: string) => {
         const defaults: any = {
@@ -1274,7 +1287,7 @@ export default function PortfolioPage() {
                                                 </div>
                                                 <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                                     <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
-                                                    {/* 🌟 แก้สีกลับเป็นเทาตามเดิม */}
+                                                    {/* 🌟 สีหมวดหมู่กลับเป็นเทาตามเดิม */}
                                                     {project.category && <p className="text-[11px] text-gray-400 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
                                                     {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{project.description}</p>}
                                                 </div>
@@ -1287,110 +1300,112 @@ export default function PortfolioPage() {
                     );
                 }
 
-                // --- 2. Portfolio Section (ผลงานหน้าหลัก) 🌟 เปลี่ยนเป็น Layout การ์ดใหญ่แนวนอน ---
+                // --- 2. Portfolio Section (ผลงานหน้าหลัก) 🌟 เป็นตาราง Grid เหมือนเดิม ---
                 if (key === 'portfolio') {
                     const displayShowcases = isAdmin || showAllShowcases ? showcases : showcases.slice(0, 3);
                     
                     return (
                         <section key="portfolio" id="portfolio" className="max-w-6xl mx-auto px-6 py-24 border-t border-gray-100 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('portfolio').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
+                            <div className="flex justify-between items-center mb-12">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
                                     <FolderOpen className="text-gray-900"/> My Portfolio
                                 </h2>
                                 {isAdmin && (
-                                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                                    <div className="flex gap-2">
                                         <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
-                                        <button onClick={() => openShowcaseEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
+                                        <button onClick={() => openShowcaseEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
                                             <Plus size={16}/> เพิ่มผลงาน
                                         </button>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="space-y-32">
-                                {displayShowcases.length === 0 ? ( <div className="text-center py-20 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">ยังไม่มีข้อมูลผลงานในส่วนนี้</div>) : (
-                                    displayShowcases.map((showcase, index) => {
-                                        const isEven = index % 2 === 0;
-                                        return (
-                                            <div 
-                                                key={showcase.id} 
-                                                className={`relative group/showcase transition-all duration-300 dnd-showcase
-                                                    ${isAdmin ? 'cursor-move select-none [-webkit-touch-callout:none]' : ''}
-                                                    ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98]' : ''}
-                                                `}
-                                                draggable={isAdmin}
-                                                onDragStart={(e) => onDragStartShowcase(e, index)}
-                                                onDragEnter={(e) => onDragEnterShowcase(e, index)}
-                                                onDragEnd={onDragEndShowcase}
-                                                onDragOver={(e) => e.preventDefault()}
-                                                onContextMenu={(e) => { if(isAdmin) e.preventDefault(); }}
-                                                
-                                                onTouchStart={(e) => {
-                                                    if(!isAdmin) return;
-                                                    dragTimer.current = setTimeout(() => {
-                                                        setDraggedShowcaseIdx(index);
-                                                    }, 500);
-                                                }}
-                                                onTouchMove={(e) => {
-                                                    if(!isAdmin) return;
-                                                    if(draggedShowcaseIdx === null) {
-                                                        if(dragTimer.current) clearTimeout(dragTimer.current);
-                                                        return;
-                                                    }
-                                                    const touch = e.touches[0];
-                                                    const touchY = touch.clientY;
-                                                    const threshold = 100;
-                                                    if (touchY < threshold) window.scrollBy(0, -15);
-                                                    else if (window.innerHeight - touchY < threshold) window.scrollBy(0, 15);
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {displayShowcases.map((showcase, index) => (
+                                    <div 
+                                        key={showcase.id} 
+                                        className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-showcase
+                                            ${isAdmin ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
+                                        `}
+                                        draggable={isAdmin}
+                                        onDragStart={(e) => onDragStartShowcase(e, index)}
+                                        onDragEnter={(e) => onDragEnterShowcase(e, index)}
+                                        onDragEnd={onDragEndShowcase}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onContextMenu={(e) => { if(isAdmin) e.preventDefault(); }}
+                                        
+                                        onTouchStart={(e) => {
+                                            if(!isAdmin) return;
+                                            dragTimer.current = setTimeout(() => {
+                                                setDraggedShowcaseIdx(index);
+                                            }, 500);
+                                        }}
+                                        onTouchMove={(e) => {
+                                            if(!isAdmin) return;
+                                            if(draggedShowcaseIdx === null) {
+                                                if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                return;
+                                            }
+                                            const touch = e.touches[0];
+                                            const touchY = touch.clientY;
+                                            const threshold = 100;
+                                            if (touchY < threshold) window.scrollBy(0, -15);
+                                            else if (window.innerHeight - touchY < threshold) window.scrollBy(0, 15);
 
-                                                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                                                    const item = el?.closest('.dnd-showcase');
-                                                    if (item) {
-                                                        const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
-                                                        if (idx !== -1 && idx !== draggedShowcaseIdx) {
-                                                            const items = [...showcases];
-                                                            const draggedItem = items[draggedShowcaseIdx];
-                                                            items.splice(draggedShowcaseIdx, 1);
-                                                            items.splice(idx, 0, draggedItem);
-                                                            setShowcases(items);
-                                                            setDraggedShowcaseIdx(idx);
-                                                        }
-                                                    }
-                                                }}
-                                                onTouchEnd={(e) => {
-                                                    if(!isAdmin) return;
-                                                    if(dragTimer.current) clearTimeout(dragTimer.current);
-                                                    if(draggedShowcaseIdx !== null) onDragEndShowcase();
-                                                }}
-                                                data-index={index}
-                                            >
-                                                <div className={`grid grid-cols-1 md:grid-cols-12 gap-12 items-center ${isAdmin ? 'pointer-events-none' : 'cursor-pointer'}`}>
-                                                    <div className={`md:col-span-7 h-96 rounded-2xl bg-gray-100 flex items-center justify-center relative overflow-hidden shadow-md border border-gray-100 group/img ${isEven ? 'order-1' : 'order-1 md:order-2'}`}>
-                                                        {showcase.imageUrls?.[0] ? <img src={showcase.imageUrls[0]} className="w-full h-full object-cover group-hover/showcase:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setLightboxData({urls: showcase.imageUrls, index: 0}); }} /> : (showcase.imageUrl ? <img src={showcase.imageUrl} className="w-full h-full object-cover group-hover/showcase:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setLightboxData({urls: [showcase.imageUrl], index: 0}); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>)}
-                                                        {(showcase.imageUrls?.length > 1) && <div className="absolute top-6 right-6 z-10 bg-white/90 text-gray-900 text-xs px-3 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-md">+{showcase.imageUrls.length - 1} รูป</div>}
-                                                        
-                                                        {/* 🌟 ปุ่มแก้ไขสำหรับแอดมิน */}
-                                                        {isAdmin && (
-                                                            <div className="absolute top-6 left-6 z-10 flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 pointer-events-auto">
-                                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
-                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div onClick={(e) => { e.stopPropagation(); setSelectedShowcase(showcase); }} className={`md:col-span-5 pointer-events-auto ${isEven ? 'order-2' : 'order-2 md:order-1'}`}>
-                                                        <p className="text-sm font-semibold text-gray-400 mb-3 tracking-widest uppercase flex items-center gap-2">
-                                                            {(index + 1).toString().padStart(2, '0')} — PORTFOLIO
-                                                        </p>
-                                                        <h3 className="text-4xl font-bold mb-6 tracking-tight group-hover/showcase:text-gray-600 transition">{showcase.title}</h3>
-                                                        {showcase.desc && <p className="text-gray-500 font-light leading-relaxed mb-8 whitespace-pre-line line-clamp-3">{showcase.desc}</p>}
-                                                        <span className="text-sm font-medium border-b border-gray-900 pb-1 group-hover/showcase:text-gray-500 group-hover/showcase:border-gray-500 transition">ดูรายละเอียดเพิ่มเติม →</span>
-                                                    </div>
-                                                </div>
+                                            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                            const item = el?.closest('.dnd-showcase');
+                                            if (item) {
+                                                const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
+                                                if (idx !== -1 && idx !== draggedShowcaseIdx) {
+                                                    const items = [...showcases];
+                                                    const draggedItem = items[draggedShowcaseIdx];
+                                                    items.splice(draggedShowcaseIdx, 1);
+                                                    items.splice(idx, 0, draggedItem);
+                                                    setShowcases(items);
+                                                    setDraggedShowcaseIdx(idx);
+                                                }
+                                            }
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            if(!isAdmin) return;
+                                            if(dragTimer.current) clearTimeout(dragTimer.current);
+                                            if(draggedShowcaseIdx !== null) onDragEndShowcase();
+                                        }}
+                                        data-index={index}
+                                        
+                                        onClick={() => { setSelectedShowcase(showcase); setCurrentImageIndex(0); }}
+                                    >
+                                        {isAdmin && (
+                                            <div className="absolute top-6 right-6 z-10 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
+                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
                                             </div>
-                                        );
-                                    })
+                                        )}
+                                        
+                                        <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
+                                            {showcase.imageUrls?.[0] ? (
+                                                <img src={showcase.imageUrls[0]} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={showcase.title} />
+                                            ) : (
+                                                showcase.imageUrl ? <img src={showcase.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={showcase.title} /> : <div className="text-gray-300 flex flex-col items-center"><LucideImage size={32} className="mb-2"/><span className="text-xs">ไม่มีรูปภาพ</span></div>
+                                            )}
+                                            {!isAdmin && (showcase.imageUrl || showcase.imageUrls?.length > 0) && (
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                    <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-grow flex flex-col justify-between pointer-events-none">
+                                            <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{showcase.title}</h4>
+                                            {showcase.desc && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{showcase.desc}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                                {showcases.length === 0 && (
+                                    <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-16 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">
+                                        ยังไม่มีข้อมูลผลงานในส่วนนี้
+                                    </div>
                                 )}
                             </div>
 
@@ -1412,12 +1427,12 @@ export default function PortfolioPage() {
                     return (
                         <section key="certificates" id="certificates" className="max-w-6xl mx-auto px-6 py-24 border-t border-gray-100 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('certificates').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
+                            <div className="flex justify-between items-center mb-12">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
                                     <Award className="text-gray-900"/> Certifications & Awards
                                 </h2>
                                 {isAdmin && (
-                                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                                    <div className="flex gap-2">
                                         <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
                                         <button onClick={() => openCertEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
                                             <Plus size={16}/> เพิ่มเกียรติบัตร
@@ -1483,7 +1498,7 @@ export default function PortfolioPage() {
                                     >
                                         {/* 🌟 แสดงปุ่มตลอดเวลาสำหรับแอดมิน */}
                                         {isAdmin && (
-                                            <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
+                                            <div className="absolute top-6 right-6 z-10 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
                                                 <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
                                                 <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
                                             </div>
@@ -1622,7 +1637,7 @@ export default function PortfolioPage() {
                                             <button onClick={prevImage} className="absolute left-3 md:left-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❮</button>
                                             <button onClick={nextImage} className="absolute right-3 md:right-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❯</button>
                                             <div className="absolute bottom-4 md:bottom-6 left-0 right-0 flex justify-center space-x-2">
-                                                {selectedProject.imageUrls.map((_: any, idx: number) => (<div key={idx} onClick={() => setCurrentImageIndex(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === currentImageIndex ? 'bg-gray-900 w-6' : 'bg-gray-300'}`} />))}
+                                                {selectedProject.imageUrls.map((_: any, idx: number) => (<div key={idx} onClick={() => setCurrentImageIndex(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer shadow-sm ${idx === currentImageIndex ? 'bg-gray-900 w-6' : 'bg-gray-300'}`} />))}
                                             </div>
                                         </>
                                     )}
@@ -1658,62 +1673,67 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 Modal ผลงาน (Showcase - สไตล์เหมือนหน้าประวัติ) */}
+            {/* 🌟 Modal ผลงาน (Showcase - สไตล์แยก 2 ฝั่ง ซ้าย/ขวา เหมือน Projects) */}
             {selectedShowcase && !showShowcaseModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-[#fafafa] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative border border-gray-200">
-                        <div className="sticky top-0 flex justify-between items-center p-6 border-b border-gray-200 bg-white z-10">
-                            <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">รูปภาพผลงาน</p>
-                                <h3 className="font-bold text-gray-900 text-xl sm:text-2xl">{selectedShowcase.title}</h3>
-                            </div>
-                            <button onClick={() => setSelectedShowcase(null)} className="text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2.5 rounded-full transition-colors shrink-0"><X size={24}/></button>
-                        </div>
-                        <div className="p-6 md:p-8 overflow-y-auto flex-1 bg-gray-50/50">
-                            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm mb-6">
-                                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{selectedShowcase.title}</h2>
-                                {selectedShowcase.desc && <p className="text-gray-600 leading-relaxed mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 whitespace-pre-line">{selectedShowcase.desc}</p>}
-                                
-                                {/* 🌟 ลิงก์ผลงาน Showcases */}
-                                <div className="flex flex-wrap gap-3">
-                                    {selectedShowcase.link && (
-                                        <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>
-                                    )}
-                                    {selectedShowcase.links && selectedShowcase.links.map((link: any, i: number) => (
-                                        <a key={i} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">
-                                            {link.label || 'ดูลิงก์ผลงาน'} <ExternalLink size={18} />
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {(() => {
-                                const allImages: string[] = selectedShowcase.imageUrls?.length > 0
-                                    ? selectedShowcase.imageUrls
-                                    : selectedShowcase.imageUrl ? [selectedShowcase.imageUrl] : [];
-                                if (allImages.length === 0) return null;
-                                return (
-                                    <>
-                                        <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพผลงาน ({allImages.length})</h3>
-                                        <div className={`grid gap-4 ${allImages.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-                                            {allImages.map((url: string, idx: number) => (
-                                                <div key={idx} className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxData({urls: allImages, index: idx})}>
-                                                    <img src={url} alt={`${selectedShowcase.title}-${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
-                                                    </div>
-                                                </div>
+                <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
+                    <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-7xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
+                        <button onClick={() => setSelectedShowcase(null)} className="absolute top-6 right-6 z-10 bg-gray-100/80 backdrop-blur-md w-12 h-12 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-200 transition text-xl"><X size={24}/></button>
+                        
+                        {(() => {
+                            const allImages = selectedShowcase.imageUrls?.length > 0 ? selectedShowcase.imageUrls : (selectedShowcase.imageUrl ? [selectedShowcase.imageUrl] : []);
+                            return (
+                                <>
+                                    <div className="w-full md:w-3/5 bg-[#fafafa] relative h-[50vh] md:h-auto flex items-center justify-center p-4 md:p-12">
+                                        {allImages.length > 0 ? (
+                                            <>
+                                                <img
+                                                    src={allImages[currentImageIndex]}
+                                                    className="w-full h-full object-contain drop-shadow-sm transition-opacity duration-500 cursor-zoom-in"
+                                                    onClick={() => setLightboxData({urls: allImages, index: currentImageIndex})}
+                                                />
+                                                {allImages.length > 1 && (
+                                                    <>
+                                                        <button onClick={prevImage} className="absolute left-3 md:left-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❮</button>
+                                                        <button onClick={nextImage} className="absolute right-3 md:right-6 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-md transition text-xl">❯</button>
+                                                        <div className="absolute bottom-4 md:bottom-6 left-0 right-0 flex justify-center space-x-2">
+                                                            {allImages.map((_: any, idx: number) => (
+                                                                <div key={idx} onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }} className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer shadow-sm ${idx === currentImageIndex ? 'bg-gray-900 w-6' : 'bg-gray-300'}`} />
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </>
+                                        ) : (<div className="text-gray-400">ไม่มีรูปภาพ</div>)}
+                                    </div>
+                                    <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
+                                        <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">PORTFOLIO</p>
+                                        <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-tight">{selectedShowcase.title}</h2>
+                                        
+                                        <div className="flex flex-wrap gap-3 mb-8">
+                                            {selectedShowcase.link && (
+                                                <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm">
+                                                    ดูผลงานต้นฉบับ <ExternalLink size={14} />
+                                                </a>
+                                            )}
+                                            {selectedShowcase.links && selectedShowcase.links.length > 0 && selectedShowcase.links.map((link: any, i: number) => (
+                                                <a key={i} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm">
+                                                    {link.label || 'ดูลิงก์ผลงาน'} <ExternalLink size={14} />
+                                                </a>
                                             ))}
                                         </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
+
+                                        <div className="h-px w-full bg-gray-100 mb-8"></div>
+                                        
+                                        <p className="text-gray-600 leading-relaxed whitespace-pre-line text-lg font-light flex-grow">{selectedShowcase.desc}</p>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
 
-            {/* Modal เกียรติบัตร (Certificates) */}
+            {/* 🌟 Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
             {selectedCert && !showCertModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-6xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
