@@ -268,7 +268,6 @@ export default function PortfolioPage() {
         return () => clearInterval(interval);
     }, [selectedProject]);
 
-    // เลื่อนรูปของ Modal ใดๆ ที่ใช้ currentImageIndex (เช่น projects, showcases)
     const nextImage = () => {
         if (selectedProject) setCurrentImageIndex((prev) => (prev + 1) % selectedProject.imageUrls.length);
         else if (selectedShowcase) {
@@ -1172,7 +1171,13 @@ export default function PortfolioPage() {
                                                 data-index={globalIndex}
                                             >
                                                 {isAdmin && project.isPublished === false && <div className="absolute -top-6 left-0 z-30 bg-orange-100 text-orange-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={12}/> ซ่อนอยู่ (Draft)</div>}
-                                                
+                                                {isAdmin && !isDateSort && (
+                                                    <div className="absolute -top-6 right-0 z-30 flex gap-1">
+                                                        <button onClick={() => moveProject(globalIndex, -1)} disabled={globalIndex === 0} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↑</button>
+                                                        <button onClick={() => moveProject(globalIndex, 1)} disabled={globalIndex === projects.length - 1} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↓</button>
+                                                    </div>
+                                                )}
+
                                                 <div className={`grid grid-cols-1 md:grid-cols-12 gap-12 items-center ${isAdmin && !isDateSort ? 'pointer-events-none' : 'cursor-pointer'}`}>
                                                     <div className={`md:col-span-7 h-96 rounded-2xl bg-gray-100 flex items-center justify-center relative overflow-hidden shadow-md border border-gray-100 group/img ${isEven ? 'order-1' : 'order-1 md:order-2'}`}>
                                                         {project.imageUrls?.[0] ? <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover/project:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setLightboxData({urls: project.imageUrls, index: 0}); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>}
@@ -1300,7 +1305,7 @@ export default function PortfolioPage() {
                     );
                 }
 
-                // --- 2. Portfolio Section (ผลงานหน้าหลัก) 🌟 เป็นตาราง Grid เหมือนเดิม ---
+                // --- 2. Portfolio Section (ผลงานหน้าหลัก) ---
                 if (key === 'portfolio') {
                     const displayShowcases = isAdmin || showAllShowcases ? showcases : showcases.slice(0, 3);
                     
@@ -1646,7 +1651,7 @@ export default function PortfolioPage() {
                         </div>
                         <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                             <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest">{selectedProject.category} {selectedProject.date && `| ${selectedProject.date}`}</p>
-                            <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-tight">{selectedProject.title}</h2>
+                            <h2 className="text-2xl md:text-4xl font-bold mb-6 leading-snug">{selectedProject.title}</h2>
                             {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
                             
                             {/* 🌟 ลิงก์ผลงาน Projects */}
@@ -1707,7 +1712,7 @@ export default function PortfolioPage() {
                                     </div>
                                     <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                                         <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">PORTFOLIO</p>
-                                        <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-tight">{selectedShowcase.title}</h2>
+                                        <h2 className="text-2xl md:text-4xl font-bold mb-6 leading-snug">{selectedShowcase.title}</h2>
                                         
                                         <div className="flex flex-wrap gap-3 mb-8">
                                             {selectedShowcase.link && (
@@ -1963,6 +1968,7 @@ export default function PortfolioPage() {
                         
                         <form onSubmit={handleSaveShowcase} className="space-y-5">
                             
+                            {/* ส่วนเพิ่มการนำเข้าจากหน้าประวัติ (แสดงเฉพาะตอนสร้างใหม่) */}
                             {!editingShowcase && availableImportOptions.length > 0 && (
                                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-2">
                                     <label className="block text-xs font-bold text-blue-800 mb-2 flex items-center gap-2">
