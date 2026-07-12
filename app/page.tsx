@@ -82,6 +82,7 @@ export default function PortfolioPage() {
     const [editPhone, setEditPhone] = useState("");
     const [editEmail, setEditEmail] = useState("");
 
+    // State Projects
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [editingProject, setEditingProject] = useState<any>(null);
     const [pTitle, setPTitle] = useState(''); const [pCategory, setPCategory] = useState('Event Management & Leadership');
@@ -92,6 +93,7 @@ export default function PortfolioPage() {
     const [pLinks, setPLinks] = useState<{label: string, url: string}[]>([]);
     const [pIsPublished, setPIsPublished] = useState(true);
 
+    // State Certificates
     const [showCertModal, setShowCertModal] = useState(false);
     const [editingCert, setEditingCert] = useState<any>(null);
     const [cTitle, setCTitle] = useState('');
@@ -100,7 +102,9 @@ export default function PortfolioPage() {
     const [cDesc, setCDesc] = useState('');
     const [cFiles, setCFiles] = useState<File[]>([]);
     const [cExistingImages, setCExistingImages] = useState<string[]>([]);
+    const [cLinks, setCLinks] = useState<{label: string, url: string}[]>([]);
 
+    // State Showcases
     const [showShowcaseModal, setShowShowcaseModal] = useState(false);
     const [editingShowcase, setEditingShowcase] = useState<any>(null);
     const [sTitle, setSTitle] = useState('');
@@ -108,17 +112,18 @@ export default function PortfolioPage() {
     const [sLink, setSLink] = useState('');
     const [sFiles, setSFiles] = useState<File[]>([]);
     const [sExistingImages, setSExistingImages] = useState<string[]>([]);
+    const [sLinks, setSLinks] = useState<{label: string, url: string}[]>([]);
 
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginEmail, setLoginEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
     const [loginError, setLoginError] = useState("");
 
-    // 🌟 Lightbox Data (รองรับรูปหลายใบ)
+    // Lightbox Data
     const [lightboxData, setLightboxData] = useState<{urls: string[], index: number} | null>(null);
     const [isWorksOpen, setIsWorksOpen] = useState(false);
 
-    // 🌟 State สำหรับจัดการลากและวาง (Drag and Drop)
+    // Drag and Drop Timers
     const dragTimer = useRef<NodeJS.Timeout | null>(null);
     
     const [draggedProjectIdx, setDraggedProjectIdx] = useState<number | null>(null);
@@ -157,16 +162,13 @@ export default function PortfolioPage() {
             setActiveHash('');
             return;
         }
-
         const handleScroll = () => {
             const sections = ['projects', 'portfolio', 'certificates', 'contact'];
             let current = '';
-            
             if (window.scrollY < 100) {
                 setActiveHash('');
                 return;
             }
-
             for (const section of sections) {
                 const el = document.getElementById(section);
                 if (el) {
@@ -178,7 +180,6 @@ export default function PortfolioPage() {
             }
             setActiveHash(current);
         };
-
         window.addEventListener('scroll', handleScroll);
         handleScroll(); 
         return () => window.removeEventListener('scroll', handleScroll);
@@ -345,13 +346,10 @@ export default function PortfolioPage() {
     const openEditor = (e: React.MouseEvent, fieldKey: string, label: string) => {
         e.stopPropagation(); 
         if (activeField === fieldKey && isSidebarOpen) return;
-        
         setActiveField(fieldKey); setEditLabel(label);
-        
         setEditColor(siteStyles[fieldKey]?.color || "");
         setEditFontSize(siteStyles[fieldKey]?.fontSize || "");
         setEditFontFamily(siteStyles[fieldKey]?.fontFamily || "");
-        
         setEditBgColor(siteStyles[fieldKey]?.bgColor || "");
         setEditBgOpacity(siteStyles[fieldKey]?.bgOpacity || "100");
         setEditBorderRadius(siteStyles[fieldKey]?.borderRadius || "");
@@ -359,7 +357,6 @@ export default function PortfolioPage() {
         setEditBorderWidth(siteStyles[fieldKey]?.borderWidth || "");
         setEditShadow(siteStyles[fieldKey]?.shadow || "");
         setEditPadding(siteStyles[fieldKey]?.padding || "");
-        
         setIsSidebarOpen(true);
     };
 
@@ -370,16 +367,9 @@ export default function PortfolioPage() {
             const updatedStyles = { 
                 ...siteStyles, 
                 [activeField]: { 
-                    color: editColor, 
-                    fontSize: editFontSize, 
-                    fontFamily: editFontFamily,
-                    bgColor: editBgColor,
-                    bgOpacity: editBgOpacity,
-                    borderRadius: editBorderRadius,
-                    borderColor: editBorderColor,
-                    borderWidth: editBorderWidth,
-                    shadow: editShadow,
-                    padding: editPadding
+                    color: editColor, fontSize: editFontSize, fontFamily: editFontFamily,
+                    bgColor: editBgColor, bgOpacity: editBgOpacity, borderRadius: editBorderRadius,
+                    borderColor: editBorderColor, borderWidth: editBorderWidth, shadow: editShadow, padding: editPadding
                 } 
             };
             await setDoc(doc(db, "settings", "homepage"), { siteStyles: updatedStyles }, { merge: true });
@@ -430,11 +420,11 @@ export default function PortfolioPage() {
     const handleSaveProject = async (e: React.FormEvent) => {
         e.preventDefault(); setIsSaving(true);
         try {
-            let finalImageUrls = [...pExistingImages]; // 🌟 เก็บรูปเดิมที่ไม่ได้ลบทิ้งไว้
+            let finalImageUrls = [...pExistingImages]; 
             if (pFiles.length > 0) {
                 for (let file of pFiles) {
                     const url = await uploadToCloudinary(file);
-                    if (url) finalImageUrls.push(url); // 🌟 เอารูปใหม่ต่อท้ายรูปเดิม
+                    if (url) finalImageUrls.push(url);
                 }
             }
             let finalDateStr = formatDateStr(pStartDate);
@@ -488,8 +478,9 @@ export default function PortfolioPage() {
         if (cert) {
             setEditingCert(cert); setCTitle(cert.title); setCIssuer(cert.issuer); setCYear(cert.year); setCDesc(cert.desc || ''); 
             setCExistingImages(cert.imageUrls || (cert.imageUrl ? [cert.imageUrl] : []));
+            setCLinks(cert.links || []);
         } else {
-            setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCDesc(''); setCExistingImages([]);
+            setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCDesc(''); setCExistingImages([]); setCLinks([]);
         }
         setCFiles([]); setShowCertModal(true);
     };
@@ -509,7 +500,7 @@ export default function PortfolioPage() {
                 newOrderIndex = Math.min(...certificates.map(c => c.orderIndex !== undefined ? c.orderIndex : parseInt(c.year || '0') * 1000000)) - 1000;
             }
 
-            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls: finalImageUrls, orderIndex: editingCert ? editingCert.orderIndex : newOrderIndex };
+            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: cLinks, orderIndex: editingCert ? editingCert.orderIndex : newOrderIndex };
             if (editingCert) {
                 await updateDoc(doc(db, "certificates", editingCert.id), data);
                 let updatedCerts = certificates.map(c => c.id === editingCert.id ? { ...c, ...data } : c);
@@ -554,7 +545,6 @@ export default function PortfolioPage() {
         const idx = e.target.value;
         setImportSource(idx);
         if (idx === "") return;
-        
         const selected = availableImportOptions[parseInt(idx)].data;
         setSTitle(selected.title || "");
         setSDesc(selected.desc || "");
@@ -569,8 +559,9 @@ export default function PortfolioPage() {
         if (showcase) {
             setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); setSLink(showcase.link || ''); 
             setSExistingImages(showcase.imageUrls || (showcase.imageUrl ? [showcase.imageUrl] : []));
+            setSLinks(showcase.links || []);
         } else {
-            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImages([]);
+            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImages([]); setSLinks([]);
         }
         setSFiles([]); setShowShowcaseModal(true);
     };
@@ -591,7 +582,7 @@ export default function PortfolioPage() {
                 newOrderIndex = Math.min(...showcases.map(s => s.orderIndex !== undefined ? s.orderIndex : (s.createdAt?.toMillis ? s.createdAt.toMillis() : 0))) - 1000;
             }
 
-            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls: finalImageUrls, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
+            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
@@ -614,7 +605,7 @@ export default function PortfolioPage() {
     };
 
     // ==========================================
-    // 🌟 ระบบลากและวาง (Drag and Drop Handlers) พร้อม Auto-scroll ขอบจอ iPad
+    // 🌟 ระบบลากและวาง (Drag and Drop Handlers)
     // ==========================================
     const onDragStartProject = (e: React.DragEvent, index: number) => {
         if (!isAdmin || getSectionConfig('projects').sortMode === 'date') return;
@@ -637,9 +628,7 @@ export default function PortfolioPage() {
         setDraggedProjectIdx(null);
         setDragOverProjectIdx(null);
         const now = Date.now();
-        await Promise.all(projects.map((item, idx) => 
-            updateDoc(doc(db, "projects", item.id), { orderIndex: now - idx * 1000 })
-        ));
+        await Promise.all(projects.map((item, idx) => updateDoc(doc(db, "projects", item.id), { orderIndex: now - idx * 1000 })));
     };
 
     const onDragStartShowcase = (e: React.DragEvent, index: number) => {
@@ -663,9 +652,7 @@ export default function PortfolioPage() {
         setDraggedShowcaseIdx(null);
         setDragOverShowcaseIdx(null);
         const now = Date.now();
-        await Promise.all(showcases.map((item, idx) => 
-            updateDoc(doc(db, "showcases", item.id), { orderIndex: now - idx * 1000 })
-        ));
+        await Promise.all(showcases.map((item, idx) => updateDoc(doc(db, "showcases", item.id), { orderIndex: now - idx * 1000 })));
     };
 
     const onDragStartCert = (e: React.DragEvent, index: number) => {
@@ -689,11 +676,8 @@ export default function PortfolioPage() {
         setDraggedCertIdx(null);
         setDragOverCertIdx(null);
         const now = Date.now();
-        await Promise.all(certificates.map((item, idx) => 
-            updateDoc(doc(db, "certificates", item.id), { orderIndex: now - idx * 1000 })
-        ));
+        await Promise.all(certificates.map((item, idx) => updateDoc(doc(db, "certificates", item.id), { orderIndex: now - idx * 1000 })));
     };
-    // ==========================================
 
     const isDateSort = getSectionConfig('projects').sortMode === 'date';
     let sortedProjects = [...(isAdmin ? projects : projects.filter(p => p.isPublished !== false))];
@@ -713,7 +697,6 @@ export default function PortfolioPage() {
 
     const getStyle = (key: string, defaultClasses: string) => {
         const isEditing = isAdmin && activeField === key;
-        
         const styleObj = isEditing ? {
             color: editColor !== "" ? editColor : siteStyles[key]?.color,
             fontSize: editFontSize !== "" ? editFontSize : siteStyles[key]?.fontSize,
@@ -819,7 +802,6 @@ export default function PortfolioPage() {
                         <h2 className="font-bold text-lg text-gray-900 flex items-center gap-2"><Wrench size={20}/> Visual Builder</h2>
                         <button onClick={() => { setIsSidebarOpen(false); setActiveField(null); }} className="text-gray-400 hover:text-red-500 font-bold text-xl transition">✕</button>
                     </div>
-
                     <div className="p-6 flex-grow overflow-y-auto">
                         {!activeField && (
                             <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4 mb-8">
@@ -1150,15 +1132,10 @@ export default function PortfolioPage() {
                                                         return;
                                                     }
                                                     const touch = e.touches[0];
-                                                    
-                                                    // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
                                                     const touchY = touch.clientY;
                                                     const threshold = 100;
-                                                    if (touchY < threshold) {
-                                                        window.scrollBy(0, -15);
-                                                    } else if (window.innerHeight - touchY < threshold) {
-                                                        window.scrollBy(0, 15);
-                                                    }
+                                                    if (touchY < threshold) window.scrollBy(0, -15);
+                                                    else if (window.innerHeight - touchY < threshold) window.scrollBy(0, 15);
 
                                                     const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                                     const item = el?.closest('.dnd-project');
@@ -1177,29 +1154,22 @@ export default function PortfolioPage() {
                                                 onTouchEnd={(e) => {
                                                     if(!isAdmin || isDateSort) return;
                                                     if(dragTimer.current) clearTimeout(dragTimer.current);
-                                                    if(draggedProjectIdx !== null) {
-                                                        onDragEndProject();
-                                                    }
+                                                    if(draggedProjectIdx !== null) onDragEndProject();
                                                 }}
                                                 data-index={globalIndex}
                                             >
                                                 {isAdmin && project.isPublished === false && <div className="absolute -top-6 left-0 z-30 bg-orange-100 text-orange-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={12}/> ซ่อนอยู่ (Draft)</div>}
-                                                {isAdmin && !isDateSort && (
-                                                    <div className="absolute -top-6 right-0 z-30 flex gap-1">
-                                                        <button onClick={() => moveProject(globalIndex, -1)} disabled={globalIndex === 0} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↑</button>
-                                                        <button onClick={() => moveProject(globalIndex, 1)} disabled={globalIndex === projects.length - 1} className="bg-white border border-gray-200 text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg text-xs font-bold disabled:opacity-30 shadow-sm">↓</button>
-                                                    </div>
-                                                )}
-
+                                                
                                                 <div className={`grid grid-cols-1 md:grid-cols-12 gap-12 items-center ${isAdmin && !isDateSort ? 'pointer-events-none' : 'cursor-pointer'}`}>
                                                     <div className={`md:col-span-7 h-96 rounded-2xl bg-gray-100 flex items-center justify-center relative overflow-hidden shadow-md border border-gray-100 group/img ${isEven ? 'order-1' : 'order-1 md:order-2'}`}>
-                                                        {project.imageUrls?.[0] ? <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover/project:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setSelectedProject(project); setCurrentImageIndex(0); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>}
+                                                        {project.imageUrls?.[0] ? <img src={project.imageUrls[0]} className="w-full h-full object-cover group-hover/project:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setLightboxData({urls: project.imageUrls, index: 0}); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>}
                                                         {project.imageUrls?.length > 1 && <div className="absolute top-6 right-6 z-10 bg-white/90 text-gray-900 text-xs px-3 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-md">+{project.imageUrls.length - 1} รูป</div>}
                                                         
                                                         {isAdmin && (
-                                                            <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all z-20 pointer-events-auto">
-                                                                <div className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 hover:scale-105 transition transform"><Edit3 size={18}/> แก้ไขข้อมูลและรูปภาพ</div>
-                                                            </button>
+                                                            <div className="absolute top-6 left-6 z-10 flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 pointer-events-auto">
+                                                                <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
+                                                            </div>
                                                         )}
                                                     </div>
 
@@ -1227,8 +1197,8 @@ export default function PortfolioPage() {
                                             <div 
                                                 key={project.id} 
                                                 className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
-                                                    ${isAdmin && !isDateSort ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2' : 'border-gray-100'}
+                                                    ${isAdmin && !isDateSort ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
                                                 `}
                                                 draggable={isAdmin && !isDateSort}
                                                 onDragStart={(e) => onDragStartProject(e, globalIndex)}
@@ -1250,15 +1220,10 @@ export default function PortfolioPage() {
                                                         return;
                                                     }
                                                     const touch = e.touches[0];
-                                                    
-                                                    // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
                                                     const touchY = touch.clientY;
                                                     const threshold = 100;
-                                                    if (touchY < threshold) {
-                                                        window.scrollBy(0, -15);
-                                                    } else if (window.innerHeight - touchY < threshold) {
-                                                        window.scrollBy(0, 15);
-                                                    }
+                                                    if (touchY < threshold) window.scrollBy(0, -15);
+                                                    else if (window.innerHeight - touchY < threshold) window.scrollBy(0, 15);
 
                                                     const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                                     const item = el?.closest('.dnd-project');
@@ -1277,20 +1242,21 @@ export default function PortfolioPage() {
                                                 onTouchEnd={(e) => {
                                                     if(!isAdmin || isDateSort) return;
                                                     if(dragTimer.current) clearTimeout(dragTimer.current);
-                                                    if(draggedProjectIdx !== null) {
-                                                        onDragEndProject();
-                                                    }
+                                                    if(draggedProjectIdx !== null) onDragEndProject();
                                                 }}
                                                 data-index={globalIndex}
                                                 onClick={() => { if(!isAdmin) { setSelectedProject(project); setCurrentImageIndex(0); } else { setSelectedProject(project); setCurrentImageIndex(0); } }}
                                             >
                                                 {isAdmin && project.isPublished === false && <div className="absolute top-2 left-2 z-20 bg-orange-100 text-orange-700 px-2 py-1 rounded text-[10px] font-bold shadow-sm uppercase">Draft</div>}
+                                                
+                                                {/* 🌟 แสดงปุ่มเสมอสำหรับแอดมิน เพื่อให้กดบน iPad ง่ายๆ */}
                                                 {isAdmin && (
-                                                    <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
+                                                    <div className="absolute top-6 right-6 z-10 transition flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200">
                                                         <button onClick={(e) => { e.stopPropagation(); openProjectEditor(project); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
                                                         <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
                                                     </div>
                                                 )}
+
                                                 <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
                                                     {project.imageUrls?.[0] ? (
                                                         <>
@@ -1308,7 +1274,8 @@ export default function PortfolioPage() {
                                                 </div>
                                                 <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                                     <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
-                                                    {project.category && <p className="text-[11px] text-blue-600 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
+                                                    {/* 🌟 แก้สีกลับเป็นเทาตามเดิม */}
+                                                    {project.category && <p className="text-[11px] text-gray-400 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
                                                     {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{project.description}</p>}
                                                 </div>
                                             </div>
@@ -1320,121 +1287,110 @@ export default function PortfolioPage() {
                     );
                 }
 
-                // --- 2. Portfolio Section (ผลงานหน้าหลัก) ---
+                // --- 2. Portfolio Section (ผลงานหน้าหลัก) 🌟 เปลี่ยนเป็น Layout การ์ดใหญ่แนวนอน ---
                 if (key === 'portfolio') {
                     const displayShowcases = isAdmin || showAllShowcases ? showcases : showcases.slice(0, 3);
                     
                     return (
                         <section key="portfolio" id="portfolio" className="max-w-6xl mx-auto px-6 py-24 border-t border-gray-100 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('portfolio').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
-                            <div className="flex justify-between items-center mb-12">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
                                     <FolderOpen className="text-gray-900"/> My Portfolio
                                 </h2>
                                 {isAdmin && (
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
                                         <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
-                                        <button onClick={() => openShowcaseEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
+                                        <button onClick={() => openShowcaseEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
                                             <Plus size={16}/> เพิ่มผลงาน
                                         </button>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {displayShowcases.map((showcase, index) => (
-                                    <div 
-                                        key={showcase.id} 
-                                        draggable={isAdmin}
-                                        onDragStart={(e) => onDragStartShowcase(e, index)}
-                                        onDragEnter={(e) => onDragEnterShowcase(e, index)}
-                                        onDragEnd={onDragEndShowcase}
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onContextMenu={(e) => { if(isAdmin) e.preventDefault(); }}
-                                        
-                                        onTouchStart={(e) => {
-                                            if(!isAdmin) return;
-                                            dragTimer.current = setTimeout(() => {
-                                                setDraggedShowcaseIdx(index);
-                                            }, 500);
-                                        }}
-                                        onTouchMove={(e) => {
-                                            if(!isAdmin) return;
-                                            if(draggedShowcaseIdx === null) {
-                                                if(dragTimer.current) clearTimeout(dragTimer.current);
-                                                return;
-                                            }
-                                            const touch = e.touches[0];
-                                            
-                                            // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
-                                            const touchY = touch.clientY;
-                                            const threshold = 100;
-                                            if (touchY < threshold) {
-                                                window.scrollBy(0, -15);
-                                            } else if (window.innerHeight - touchY < threshold) {
-                                                window.scrollBy(0, 15);
-                                            }
+                            <div className="space-y-32">
+                                {displayShowcases.length === 0 ? ( <div className="text-center py-20 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">ยังไม่มีข้อมูลผลงานในส่วนนี้</div>) : (
+                                    displayShowcases.map((showcase, index) => {
+                                        const isEven = index % 2 === 0;
+                                        return (
+                                            <div 
+                                                key={showcase.id} 
+                                                className={`relative group/showcase transition-all duration-300 dnd-showcase
+                                                    ${isAdmin ? 'cursor-move select-none [-webkit-touch-callout:none]' : ''}
+                                                    ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98]' : ''}
+                                                `}
+                                                draggable={isAdmin}
+                                                onDragStart={(e) => onDragStartShowcase(e, index)}
+                                                onDragEnter={(e) => onDragEnterShowcase(e, index)}
+                                                onDragEnd={onDragEndShowcase}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onContextMenu={(e) => { if(isAdmin) e.preventDefault(); }}
+                                                
+                                                onTouchStart={(e) => {
+                                                    if(!isAdmin) return;
+                                                    dragTimer.current = setTimeout(() => {
+                                                        setDraggedShowcaseIdx(index);
+                                                    }, 500);
+                                                }}
+                                                onTouchMove={(e) => {
+                                                    if(!isAdmin) return;
+                                                    if(draggedShowcaseIdx === null) {
+                                                        if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                        return;
+                                                    }
+                                                    const touch = e.touches[0];
+                                                    const touchY = touch.clientY;
+                                                    const threshold = 100;
+                                                    if (touchY < threshold) window.scrollBy(0, -15);
+                                                    else if (window.innerHeight - touchY < threshold) window.scrollBy(0, 15);
 
-                                            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                                            const item = el?.closest('.dnd-showcase');
-                                            if (item) {
-                                                const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
-                                                if (idx !== -1 && idx !== draggedShowcaseIdx) {
-                                                    const items = [...showcases];
-                                                    const draggedItem = items[draggedShowcaseIdx];
-                                                    items.splice(draggedShowcaseIdx, 1);
-                                                    items.splice(idx, 0, draggedItem);
-                                                    setShowcases(items);
-                                                    setDraggedShowcaseIdx(idx);
-                                                }
-                                            }
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            if(!isAdmin) return;
-                                            if(dragTimer.current) clearTimeout(dragTimer.current);
-                                            if(draggedShowcaseIdx !== null) {
-                                                onDragEndShowcase();
-                                            }
-                                        }}
-                                        data-index={index}
-                                        
-                                        onClick={() => setSelectedShowcase(showcase)}
-                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-showcase
-                                            ${isAdmin ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
-                                        `}
-                                    >
-                                        {isAdmin && (
-                                            <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
-                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
+                                                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                                    const item = el?.closest('.dnd-showcase');
+                                                    if (item) {
+                                                        const idx = parseInt(item.getAttribute('data-index') || '-1', 10);
+                                                        if (idx !== -1 && idx !== draggedShowcaseIdx) {
+                                                            const items = [...showcases];
+                                                            const draggedItem = items[draggedShowcaseIdx];
+                                                            items.splice(draggedShowcaseIdx, 1);
+                                                            items.splice(idx, 0, draggedItem);
+                                                            setShowcases(items);
+                                                            setDraggedShowcaseIdx(idx);
+                                                        }
+                                                    }
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    if(!isAdmin) return;
+                                                    if(dragTimer.current) clearTimeout(dragTimer.current);
+                                                    if(draggedShowcaseIdx !== null) onDragEndShowcase();
+                                                }}
+                                                data-index={index}
+                                            >
+                                                <div className={`grid grid-cols-1 md:grid-cols-12 gap-12 items-center ${isAdmin ? 'pointer-events-none' : 'cursor-pointer'}`}>
+                                                    <div className={`md:col-span-7 h-96 rounded-2xl bg-gray-100 flex items-center justify-center relative overflow-hidden shadow-md border border-gray-100 group/img ${isEven ? 'order-1' : 'order-1 md:order-2'}`}>
+                                                        {showcase.imageUrls?.[0] ? <img src={showcase.imageUrls[0]} className="w-full h-full object-cover group-hover/showcase:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setLightboxData({urls: showcase.imageUrls, index: 0}); }} /> : (showcase.imageUrl ? <img src={showcase.imageUrl} className="w-full h-full object-cover group-hover/showcase:scale-105 transition duration-700 pointer-events-auto" onClick={(e) => { e.stopPropagation(); setLightboxData({urls: [showcase.imageUrl], index: 0}); }} /> : <div className="text-gray-300">ไม่มีรูปภาพ</div>)}
+                                                        {(showcase.imageUrls?.length > 1) && <div className="absolute top-6 right-6 z-10 bg-white/90 text-gray-900 text-xs px-3 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-md">+{showcase.imageUrls.length - 1} รูป</div>}
+                                                        
+                                                        {/* 🌟 ปุ่มแก้ไขสำหรับแอดมิน */}
+                                                        {isAdmin && (
+                                                            <div className="absolute top-6 left-6 z-10 flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 pointer-events-auto">
+                                                                <button onClick={(e) => { e.stopPropagation(); openShowcaseEditor(showcase); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteShowcase(showcase.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div onClick={(e) => { e.stopPropagation(); setSelectedShowcase(showcase); }} className={`md:col-span-5 pointer-events-auto ${isEven ? 'order-2' : 'order-2 md:order-1'}`}>
+                                                        <p className="text-sm font-semibold text-gray-400 mb-3 tracking-widest uppercase flex items-center gap-2">
+                                                            {(index + 1).toString().padStart(2, '0')} — PORTFOLIO
+                                                        </p>
+                                                        <h3 className="text-4xl font-bold mb-6 tracking-tight group-hover/showcase:text-gray-600 transition">{showcase.title}</h3>
+                                                        {showcase.desc && <p className="text-gray-500 font-light leading-relaxed mb-8 whitespace-pre-line line-clamp-3">{showcase.desc}</p>}
+                                                        <span className="text-sm font-medium border-b border-gray-900 pb-1 group-hover/showcase:text-gray-500 group-hover/showcase:border-gray-500 transition">ดูรายละเอียดเพิ่มเติม →</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        )}
-                                        
-                                        <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
-                                            {showcase.imageUrl ? (
-                                                <>
-                                                    <img src={showcase.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" alt={showcase.title} />
-                                                    {!isAdmin && (
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                            <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" size={24}/>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="text-gray-300 flex flex-col items-center"><LucideImage size={32} className="mb-2"/><span className="text-xs">ไม่มีรูปภาพ</span></div>
-                                            )}
-                                        </div>
-                                        <div className="flex-grow flex flex-col justify-between pointer-events-none">
-                                            <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{showcase.title}</h4>
-                                            {showcase.desc && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{showcase.desc}</p>}
-                                        </div>
-                                    </div>
-                                ))}
-                                {showcases.length === 0 && (
-                                    <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-16 text-gray-400 bg-gray-50 rounded-[2rem] border border-gray-100 border-dashed">
-                                        ยังไม่มีข้อมูลผลงานในส่วนนี้
-                                    </div>
+                                        );
+                                    })
                                 )}
                             </div>
 
@@ -1456,14 +1412,14 @@ export default function PortfolioPage() {
                     return (
                         <section key="certificates" id="certificates" className="max-w-6xl mx-auto px-6 py-24 border-t border-gray-100 scroll-mt-20 relative">
                             {isAdmin && getSectionConfig('certificates').visible === false && <div className="absolute top-10 left-6 z-30 bg-red-100 text-red-700 px-3 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase flex items-center gap-1"><EyeOff size={12}/> ซ่อนการแสดงผล (Hidden)</div>}
-                            <div className="flex justify-between items-center mb-12">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
                                     <Award className="text-gray-900"/> Certifications & Awards
                                 </h2>
                                 {isAdmin && (
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
                                         <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
-                                        <button onClick={() => openCertEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
+                                        <button onClick={() => openCertEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
                                             <Plus size={16}/> เพิ่มเกียรติบัตร
                                         </button>
                                     </div>
@@ -1474,6 +1430,10 @@ export default function PortfolioPage() {
                                 {displayCerts.map((cert, index) => (
                                     <div 
                                         key={cert.id} 
+                                        className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-cert
+                                            ${isAdmin ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
+                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
+                                        `}
                                         draggable={isAdmin}
                                         onDragStart={(e) => onDragStartCert(e, index)}
                                         onDragEnter={(e) => onDragEnterCert(e, index)}
@@ -1494,15 +1454,10 @@ export default function PortfolioPage() {
                                                 return;
                                             }
                                             const touch = e.touches[0];
-                                            
-                                            // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
                                             const touchY = touch.clientY;
                                             const threshold = 100;
-                                            if (touchY < threshold) {
-                                                window.scrollBy(0, -15);
-                                            } else if (window.innerHeight - touchY < threshold) {
-                                                window.scrollBy(0, 15);
-                                            }
+                                            if (touchY < threshold) window.scrollBy(0, -15);
+                                            else if (window.innerHeight - touchY < threshold) window.scrollBy(0, 15);
 
                                             const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                             const item = el?.closest('.dnd-cert');
@@ -1521,24 +1476,19 @@ export default function PortfolioPage() {
                                         onTouchEnd={(e) => {
                                             if(!isAdmin) return;
                                             if(dragTimer.current) clearTimeout(dragTimer.current);
-                                            if(draggedCertIdx !== null) {
-                                                onDragEndCert();
-                                            }
+                                            if(draggedCertIdx !== null) onDragEndCert();
                                         }}
                                         data-index={index}
-
                                         onClick={() => setSelectedCert(cert)}
-                                        className={`bg-white border rounded-[1.5rem] p-4 transition-all duration-300 relative group flex flex-col dnd-cert
-                                            ${isAdmin ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
-                                        `}
                                     >
+                                        {/* 🌟 แสดงปุ่มตลอดเวลาสำหรับแอดมิน */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-10 flex gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-gray-200">
-                                                <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600 active:scale-95 touch-manipulation"><Edit3 size={14}/></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600 active:scale-95 touch-manipulation"><Trash2 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); openCertEditor(cert); }} className="p-2 text-gray-600 hover:text-blue-600 touch-manipulation active:scale-95"><Edit3 size={14}/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCert(cert.id); }} className="p-2 text-red-400 hover:text-red-600 touch-manipulation active:scale-95"><Trash2 size={14}/></button>
                                             </div>
                                         )}
+
                                         <div className="bg-gray-50 rounded-[1rem] aspect-[4/3] flex items-center justify-center mb-5 overflow-hidden border border-gray-100 relative group-hover:border-gray-200 transition pointer-events-none">
                                             {cert.imageUrl ? (
                                                 <>
@@ -1684,7 +1634,7 @@ export default function PortfolioPage() {
                             <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-tight">{selectedProject.title}</h2>
                             {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
                             
-                            {/* 🌟 ปุ่มลิงก์ผลงาน */}
+                            {/* 🌟 ลิงก์ผลงาน Projects */}
                             {selectedProject.links && selectedProject.links.length > 0 && (
                                 <div className="flex flex-wrap gap-3 mb-8">
                                     {selectedProject.links.map((link: any, i: number) => (
@@ -1723,10 +1673,20 @@ export default function PortfolioPage() {
                             <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm mb-6">
                                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{selectedShowcase.title}</h2>
                                 {selectedShowcase.desc && <p className="text-gray-600 leading-relaxed mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 whitespace-pre-line">{selectedShowcase.desc}</p>}
-                                {selectedShowcase.link && <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>}
+                                
+                                {/* 🌟 ลิงก์ผลงาน Showcases */}
+                                <div className="flex flex-wrap gap-3">
+                                    {selectedShowcase.link && (
+                                        <a href={selectedShowcase.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">ดูผลงานต้นฉบับ <ExternalLink size={18} /></a>
+                                    )}
+                                    {selectedShowcase.links && selectedShowcase.links.map((link: any, i: number) => (
+                                        <a key={i} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 px-6 py-3 rounded-xl font-bold transition-all hover:shadow-md">
+                                            {link.label || 'ดูลิงก์ผลงาน'} <ExternalLink size={18} />
+                                        </a>
+                                    ))}
+                                </div>
                             </div>
 
-                            {/* แสดงรูปทุกรูป (imageUrls) ถ้ามี, fallback เป็น imageUrl */}
                             {(() => {
                                 const allImages: string[] = selectedShowcase.imageUrls?.length > 0
                                     ? selectedShowcase.imageUrls
@@ -1753,7 +1713,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
+            {/* Modal เกียรติบัตร (Certificates) */}
             {selectedCert && !showCertModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-6xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1795,8 +1755,19 @@ export default function PortfolioPage() {
                             </div>
 
                             {selectedCert.desc && (
-                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                <div className="pt-6 border-t border-gray-100">
                                     <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{selectedCert.desc}</p>
+                                </div>
+                            )}
+
+                            {/* 🌟 ลิงก์ผลงาน Certificates */}
+                            {selectedCert.links && selectedCert.links.length > 0 && (
+                                <div className="flex flex-wrap gap-3 mt-6">
+                                    {selectedCert.links.map((link: any, i: number) => (
+                                        <a key={i} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm">
+                                            {link.label || 'ดูลิงก์อ้างอิง'} <ExternalLink size={14} />
+                                        </a>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -1866,7 +1837,6 @@ export default function PortfolioPage() {
                                 </div>
                             </div>
 
-                            {/* 🌟 ส่วนเพิ่มลิงก์ผลงานแบบอิสระ */}
                             <div className="pt-4 border-t border-gray-100">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={14}/> ลิงก์ผลงานเพิ่มเติม (ไม่บังคับ)</label>
                                 {pLinks.map((link, i) => (
@@ -1890,7 +1860,6 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><textarea required value={pDesc} onChange={e=>setPDesc(e.target.value)} className="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><textarea placeholder="เช่น มีผู้เข้าร่วม 5,000 คน บริหารงบ 100,000 บาท..." value={pImpact} onChange={e=>setPImpact(e.target.value)} className="w-full h-24 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
                             
-                            {/* 🌟 ระบบจัดการรูปภาพเก่า */}
                             <div className="pt-4 border-t border-gray-100">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">จัดการรูปภาพผลงาน</label>
                                 {pExistingImages.length > 0 && (
@@ -1928,7 +1897,18 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ปีที่ได้รับ</label><input type="text" required value={cYear} onChange={e=>setCYear(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น 2026" /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label><textarea rows={3} value={cDesc} onChange={e=>setCDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดเกี่ยวกับเกียรติบัตรนี้..."></textarea></div>
                             
-                            {/* 🌟 ระบบจัดการรูปภาพเก่า */}
+                            <div className="pt-4 border-t border-gray-100">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={14}/> ลิงก์อ้างอิงเพิ่มเติม (ไม่บังคับ)</label>
+                                {cLinks.map((link, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" placeholder="ชื่อปุ่ม (เช่น โพสต์ประกาศ)" value={link.label} onChange={e => { const newLinks=[...cLinks]; newLinks[i].label=e.target.value; setCLinks(newLinks); }} className="w-1/3 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" />
+                                        <input type="url" placeholder="URL ลิงก์ปลายทาง" value={link.url} onChange={e => { const newLinks=[...cLinks]; newLinks[i].url=e.target.value; setCLinks(newLinks); }} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" />
+                                        <button type="button" onClick={() => setCLinks(cLinks.filter((_, idx) => idx !== i))} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition"><X size={18}/></button>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => setCLinks([...cLinks, {label: '', url: ''}])} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-2 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition"><Plus size={14}/> เพิ่มลิงก์</button>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-2">จัดการรูปภาพเกียรติบัตร</label>
                                 {cExistingImages.length > 0 && (
@@ -1963,7 +1943,6 @@ export default function PortfolioPage() {
                         
                         <form onSubmit={handleSaveShowcase} className="space-y-5">
                             
-                            {/* ส่วนเพิ่มการนำเข้าจากหน้าประวัติ (แสดงเฉพาะตอนสร้างใหม่) */}
                             {!editingShowcase && availableImportOptions.length > 0 && (
                                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-2">
                                     <label className="block text-xs font-bold text-blue-800 mb-2 flex items-center gap-2">
@@ -1980,9 +1959,20 @@ export default function PortfolioPage() {
 
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ชื่อผลงาน</label><input type="text" required value={sTitle} onChange={e=>setSTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น โปสเตอร์แคมเปญ" /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดสั้นๆ (ไม่บังคับ)</label><textarea rows={3} value={sDesc} onChange={e=>setSDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดผลงาน..." /></div>
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">ลิงก์ผลงานภายนอก (ไม่บังคับ)</label><input type="url" value={sLink} onChange={e=>setSLink(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="https://..." /></div>
+                            <div><label className="block text-xs font-bold text-gray-500 mb-1">ลิงก์ผลงานภายนอก (หลัก)</label><input type="url" value={sLink} onChange={e=>setSLink(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="https://..." /></div>
                             
-                            {/* 🌟 ระบบจัดการรูปภาพเก่า */}
+                            <div className="pt-4 border-t border-gray-100">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={14}/> ลิงก์ผลงานเพิ่มเติม (ไม่บังคับ)</label>
+                                {sLinks.map((link, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" placeholder="ชื่อปุ่ม" value={link.label} onChange={e => { const newLinks=[...sLinks]; newLinks[i].label=e.target.value; setSLinks(newLinks); }} className="w-1/3 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" />
+                                        <input type="url" placeholder="URL ลิงก์ปลายทาง" value={link.url} onChange={e => { const newLinks=[...sLinks]; newLinks[i].url=e.target.value; setSLinks(newLinks); }} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" />
+                                        <button type="button" onClick={() => setSLinks(sLinks.filter((_, idx) => idx !== i))} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition"><X size={18}/></button>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => setSLinks([...sLinks, {label: '', url: ''}])} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-2 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition"><Plus size={14}/> เพิ่มลิงก์</button>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-2">จัดการรูปภาพผลงาน</label>
                                 {sExistingImages.length > 0 && (
