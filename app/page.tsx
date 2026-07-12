@@ -147,6 +147,7 @@ export default function PortfolioPage() {
     const [editingShowcase, setEditingShowcase] = useState<any>(null);
     const [sTitle, setSTitle] = useState('');
     const [sDesc, setSDesc] = useState('');
+    const [sLink, setSLink] = useState('');
     const [sFiles, setSFiles] = useState<File[]>([]);
     const [sExistingImages, setSExistingImages] = useState<string[]>([]);
     const [sLinks, setSLinks] = useState<{label: string, url: string}[]>([]);
@@ -597,6 +598,7 @@ export default function PortfolioPage() {
         const selected = availableImportOptions[parseInt(idx)].data;
         setSTitle(selected.title || "");
         setSDesc(selected.desc || "");
+        setSLink(selected.link || "");
         if (selected.imageUrls && selected.imageUrls.length > 0) {
             setSExistingImages(selected.imageUrls); 
         }
@@ -605,11 +607,11 @@ export default function PortfolioPage() {
     const openShowcaseEditor = (showcase: any = null) => {
         setImportSource(""); 
         if (showcase) {
-            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); 
+            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); setSLink(showcase.link || ''); 
             setSExistingImages(showcase.imageUrls || (showcase.imageUrl ? [showcase.imageUrl] : []));
             setSLinks(showcase.links || []);
         } else {
-            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSExistingImages([]); setSLinks([]);
+            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImages([]); setSLinks([]);
         }
         setSFiles([]); setShowShowcaseModal(true);
     };
@@ -623,13 +625,14 @@ export default function PortfolioPage() {
                 finalImageUrls = [...finalImageUrls, ...uploaded.filter(Boolean) as string[]];
             }
             const finalImageUrl = finalImageUrls[0] || '';
+            const textClearDesc = sDesc.replace(/<\/?[^>]+(>|$)/g, "");
             
             let newOrderIndex = Date.now();
             if (!editingShowcase && showcases.length > 0) {
                 newOrderIndex = Math.min(...showcases.map(s => s.orderIndex !== undefined ? s.orderIndex : (s.createdAt?.toMillis ? s.createdAt.toMillis() : 0))) - 1000;
             }
 
-            const data = { title: sTitle, desc: sDesc, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
+            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
@@ -797,9 +800,11 @@ export default function PortfolioPage() {
             
             {/* 🌟 สไตล์รองรับ Rich Text Editor ในหน้าต่างโชว์ผลงาน */}
             <style dangerouslySetInnerHTML={{__html: `
-                .rich-text-content ul { list-style-type: disc !important; padding-left: 1.5rem !important; margin-bottom: 0.5rem; }
-                .rich-text-content ol { list-style-type: decimal !important; padding-left: 1.5rem !important; margin-bottom: 0.5rem; }
-                .rich-text-content p { margin-bottom: 0.5rem; min-height: 1rem; }
+                .rich-text-content p { margin-bottom: 1.25rem; min-height: 1rem; line-height: 1.8; }
+                .rich-text-content ul, .rich-text-content ol { margin-bottom: 1.25rem; line-height: 1.8; }
+                .rich-text-content ul { list-style-type: disc !important; padding-left: 1.5rem !important; }
+                .rich-text-content ol { list-style-type: decimal !important; padding-left: 1.5rem !important; }
+                .rich-text-content li { margin-bottom: 0.5rem; }
                 .rich-text-content b, .rich-text-content strong { font-weight: bold !important; }
                 .rich-text-content i, .rich-text-content em { font-style: italic !important; }
                 .rich-text-content u { text-decoration: underline !important; }
@@ -1696,7 +1701,7 @@ export default function PortfolioPage() {
                         </div>
                         <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                             <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest">{selectedProject.category} {selectedProject.date && `| ${selectedProject.date}`}</p>
-                            <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-snug">{selectedProject.title}</h2>
+                            <h2 className="text-2xl md:text-4xl font-bold mb-6 leading-relaxed text-gray-900">{selectedProject.title}</h2>
                             {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
                             
                             {/* 🌟 ลิงก์ผลงาน Projects */}
@@ -1717,7 +1722,7 @@ export default function PortfolioPage() {
                                     <div className="text-sm text-blue-900 leading-relaxed rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.impact }}></div>
                                 </div>
                             )}
-                            <div className="text-gray-600 leading-relaxed text-lg font-light flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.description }}></div>
+                            <div className="text-gray-700 leading-loose text-base md:text-lg flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.description }}></div>
                         </div>
                     </div>
                 </div>
@@ -1757,7 +1762,7 @@ export default function PortfolioPage() {
                                     </div>
                                     <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                                         <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">PORTFOLIO</p>
-                                        <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-snug">{selectedShowcase.title}</h2>
+                                        <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-relaxed text-gray-900">{selectedShowcase.title}</h2>
                                         
                                         <div className="flex flex-wrap gap-3 mb-8">
                                             {selectedShowcase.link && (
@@ -1774,7 +1779,7 @@ export default function PortfolioPage() {
 
                                         <div className="h-px w-full bg-gray-100 mb-8"></div>
                                         
-                                        <div className="text-gray-600 leading-relaxed text-lg font-light flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedShowcase.desc }}></div>
+                                        <div className="text-gray-700 leading-loose text-base md:text-lg flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedShowcase.desc }}></div>
                                     </div>
                                 </>
                             );
@@ -1810,7 +1815,7 @@ export default function PortfolioPage() {
                         
                         <div className="w-full md:w-1/2 p-8 md:p-16 overflow-y-auto max-h-[60vh] md:max-h-full bg-white flex flex-col justify-center">
                             <p className="text-sm font-semibold text-blue-600 mb-3 uppercase tracking-widest flex items-center gap-2"><Award size={16}/> เกียรติบัตรและรางวัล</p>
-                            <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight leading-tight text-gray-900">{selectedCert.title}</h2>
+                            <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-relaxed text-gray-900">{selectedCert.title}</h2>
                             
                             <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-8 space-y-4">
                                 <div>
@@ -1826,7 +1831,7 @@ export default function PortfolioPage() {
 
                             {selectedCert.desc && (
                                 <div className="pt-6 border-t border-gray-100">
-                                    <div className="text-gray-600 leading-relaxed text-sm rich-text-content" dangerouslySetInnerHTML={{ __html: selectedCert.desc }}></div>
+                                    <div className="text-gray-700 leading-loose text-base md:text-lg rich-text-content" dangerouslySetInnerHTML={{ __html: selectedCert.desc }}></div>
                                 </div>
                             )}
 
@@ -1927,7 +1932,6 @@ export default function PortfolioPage() {
                                 </label>
                             </div>
 
-                            {/* 🌟 เปลี่ยนเป็น Rich Text Editor */}
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><MiniEditor value={pDesc} onChange={setPDesc} /></div>
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><MiniEditor value={pImpact} onChange={setPImpact} minHeight="80px" /></div>
                             
@@ -1967,7 +1971,6 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">หน่วยงานที่ออกให้</label><input type="text" required value={cIssuer} onChange={e=>setCIssuer(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Bootcamp Co." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ปีที่ได้รับ</label><input type="text" required value={cYear} onChange={e=>setCYear(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น 2026" /></div>
                             
-                            {/* 🌟 เปลี่ยนเป็น Rich Text Editor */}
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label><MiniEditor value={cDesc} onChange={setCDesc} minHeight="80px" /></div>
                             
                             <div className="pt-4 border-t border-gray-100">
@@ -2032,7 +2035,6 @@ export default function PortfolioPage() {
 
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ชื่อผลงาน</label><input type="text" required value={sTitle} onChange={e=>setSTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น โปสเตอร์แคมเปญ" /></div>
                             
-                            {/* 🌟 เปลี่ยนเป็น Rich Text Editor */}
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดสั้นๆ (ไม่บังคับ)</label><MiniEditor value={sDesc} onChange={setSDesc} minHeight="80px" /></div>
                             
                             <div className="pt-4 border-t border-gray-100">
@@ -2054,7 +2056,7 @@ export default function PortfolioPage() {
                                         {sExistingImages.map((url, i) => (
                                             <div key={i} className="relative w-16 h-16 rounded-md border border-gray-200 overflow-hidden group">
                                                 <img src={url} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setSExistingImages(sExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full shadow-md z-10 hover:bg-red-600 transition"><X size={10}/></button>
+                                                <button type="button" onClick={() => setSExistingImages(sExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full shadow-md z-10 hover:bg-red-600 transition"><X size={12}/></button>
                                             </div>
                                         ))}
                                     </div>
