@@ -18,6 +18,44 @@ import {
     Lock, ArrowUp, ArrowDown, Eye, EyeOff, Layout, ArrowRight, GripHorizontal, Calendar
 } from 'lucide-react';
 
+// 🌟 Helper Function สำหรับลบ HTML Tags ตอนพรีวิวในการ์ดเล็ก
+const stripHtml = (html: string) => {
+    if (!html) return "";
+    return html.replace(/<[^>]*>?/gm, '');
+};
+
+// 🌟 Component เครื่องมือจัดรูปแบบข้อความ (Rich Text Editor) สำหรับ Admin
+const MiniEditor = ({ value, onChange, minHeight = "120px" }: { value: string, onChange: (v: string) => void, minHeight?: string }) => {
+    const editorRef = useRef<HTMLDivElement>(null);
+    
+    useEffect(() => {
+        if (editorRef.current && value !== editorRef.current.innerHTML) {
+            editorRef.current.innerHTML = value || '';
+        }
+    }, [value]);
+
+    return (
+        <div className="flex flex-col w-full shadow-sm">
+            <div className="flex flex-wrap gap-1 bg-gray-100 p-1.5 rounded-t-xl border border-gray-200 border-b-0">
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold', false, ''); }} className="w-7 h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 font-bold text-gray-700 shadow-sm text-sm">B</button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic', false, ''); }} className="w-7 h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 italic text-gray-700 shadow-sm text-sm">I</button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false, ''); }} className="w-7 h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 underline text-gray-700 shadow-sm text-sm">U</button>
+                <div className="w-px bg-gray-300 mx-1 my-1"></div>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertUnorderedList', false, ''); }} className="w-7 h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 text-gray-700 shadow-sm"><List size={12}/></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertOrderedList', false, ''); }} className="w-7 h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 text-gray-700 shadow-sm"><ListOrdered size={12}/></button>
+            </div>
+            <div 
+                ref={editorRef}
+                contentEditable
+                onInput={(e) => onChange(e.currentTarget.innerHTML)}
+                onBlur={(e) => onChange(e.currentTarget.innerHTML)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-b-xl p-3 outline-none focus:bg-white focus:border-blue-500 text-sm overflow-y-auto rich-text-content"
+                style={{ minHeight }}
+            />
+        </div>
+    );
+};
+
 export default function PortfolioPage() {
     const pathname = usePathname() || '/';
     const [activeHash, setActiveHash] = useState('');
@@ -109,7 +147,6 @@ export default function PortfolioPage() {
     const [editingShowcase, setEditingShowcase] = useState<any>(null);
     const [sTitle, setSTitle] = useState('');
     const [sDesc, setSDesc] = useState('');
-    const [sLink, setSLink] = useState('');
     const [sFiles, setSFiles] = useState<File[]>([]);
     const [sExistingImages, setSExistingImages] = useState<string[]>([]);
     const [sLinks, setSLinks] = useState<{label: string, url: string}[]>([]);
@@ -560,7 +597,6 @@ export default function PortfolioPage() {
         const selected = availableImportOptions[parseInt(idx)].data;
         setSTitle(selected.title || "");
         setSDesc(selected.desc || "");
-        setSLink(selected.link || "");
         if (selected.imageUrls && selected.imageUrls.length > 0) {
             setSExistingImages(selected.imageUrls); 
         }
@@ -569,11 +605,11 @@ export default function PortfolioPage() {
     const openShowcaseEditor = (showcase: any = null) => {
         setImportSource(""); 
         if (showcase) {
-            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); setSLink(showcase.link || ''); 
+            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); 
             setSExistingImages(showcase.imageUrls || (showcase.imageUrl ? [showcase.imageUrl] : []));
             setSLinks(showcase.links || []);
         } else {
-            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImages([]); setSLinks([]);
+            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSExistingImages([]); setSLinks([]);
         }
         setSFiles([]); setShowShowcaseModal(true);
     };
@@ -587,14 +623,13 @@ export default function PortfolioPage() {
                 finalImageUrls = [...finalImageUrls, ...uploaded.filter(Boolean) as string[]];
             }
             const finalImageUrl = finalImageUrls[0] || '';
-            const textClearDesc = sDesc.replace(/<\/?[^>]+(>|$)/g, "");
             
             let newOrderIndex = Date.now();
             if (!editingShowcase && showcases.length > 0) {
                 newOrderIndex = Math.min(...showcases.map(s => s.orderIndex !== undefined ? s.orderIndex : (s.createdAt?.toMillis ? s.createdAt.toMillis() : 0))) - 1000;
             }
 
-            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
+            const data = { title: sTitle, desc: sDesc, imageUrl: finalImageUrl, imageUrls: finalImageUrls, links: sLinks, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
@@ -760,7 +795,17 @@ export default function PortfolioPage() {
     return (
         <div className={`min-h-screen scroll-smooth font-['IBM_Plex_Sans_Thai'] text-[#111827] bg-[#fafafa] ${(selectedProject || selectedShowcase || selectedCert || lightboxData) ? 'overflow-hidden' : ''}`}>
             
-            {/* 🌟 Lightbox ดูรูปขนาดใหญ่เต็มจอ (Slider) */}
+            {/* 🌟 สไตล์รองรับ Rich Text Editor ในหน้าต่างโชว์ผลงาน */}
+            <style dangerouslySetInnerHTML={{__html: `
+                .rich-text-content ul { list-style-type: disc !important; padding-left: 1.5rem !important; margin-bottom: 0.5rem; }
+                .rich-text-content ol { list-style-type: decimal !important; padding-left: 1.5rem !important; margin-bottom: 0.5rem; }
+                .rich-text-content p { margin-bottom: 0.5rem; min-height: 1rem; }
+                .rich-text-content b, .rich-text-content strong { font-weight: bold !important; }
+                .rich-text-content i, .rich-text-content em { font-style: italic !important; }
+                .rich-text-content u { text-decoration: underline !important; }
+            `}} />
+
+            {/* Lightbox ดูรูปขนาดใหญ่เต็มจอ (Slider) */}
             {lightboxData && (
                 <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-4 sm:p-8" onClick={() => setLightboxData(null)}>
                     <button className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-2 rounded-full backdrop-blur transition-all z-50"><X size={28}/></button>
@@ -1197,7 +1242,7 @@ export default function PortfolioPage() {
                                                             {project.date && <span className="flex items-center gap-1"><Calendar size={12}/> {project.date}</span>}
                                                         </p>
                                                         <h3 className="text-4xl font-bold mb-6 tracking-tight group-hover/project:text-gray-600 transition">{project.title}</h3>
-                                                        {project.description && <p className="text-gray-500 font-light leading-relaxed mb-8 whitespace-pre-line line-clamp-3">{project.description}</p>}
+                                                        {project.description && <p className="text-gray-500 font-light leading-relaxed mb-8 whitespace-pre-line line-clamp-3">{stripHtml(project.description)}</p>}
                                                         <span className="text-sm font-medium border-b border-gray-900 pb-1 group-hover/project:text-gray-500 group-hover/project:border-gray-500 transition">ดูรายละเอียดเพิ่มเติม →</span>
                                                     </div>
                                                 </div>
@@ -1294,7 +1339,7 @@ export default function PortfolioPage() {
                                                     <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
                                                     {/* 🌟 สีหมวดหมู่กลับเป็นเทาตามเดิม */}
                                                     {project.category && <p className="text-[11px] text-gray-400 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
-                                                    {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{project.description}</p>}
+                                                    {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{stripHtml(project.description)}</p>}
                                                 </div>
                                             </div>
                                         );
@@ -1403,7 +1448,7 @@ export default function PortfolioPage() {
                                         </div>
                                         <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                             <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{showcase.title}</h4>
-                                            {showcase.desc && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{showcase.desc}</p>}
+                                            {showcase.desc && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{stripHtml(showcase.desc)}</p>}
                                         </div>
                                     </div>
                                 ))}
@@ -1651,7 +1696,7 @@ export default function PortfolioPage() {
                         </div>
                         <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                             <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest">{selectedProject.category} {selectedProject.date && `| ${selectedProject.date}`}</p>
-                            <h2 className="text-2xl md:text-4xl font-bold mb-6 leading-snug">{selectedProject.title}</h2>
+                            <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-snug">{selectedProject.title}</h2>
                             {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
                             
                             {/* 🌟 ลิงก์ผลงาน Projects */}
@@ -1669,10 +1714,10 @@ export default function PortfolioPage() {
                             {selectedProject.impact && (
                                 <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl mb-8">
                                     <h4 className="text-xs font-bold text-blue-800 uppercase tracking-widest mb-2 flex items-center gap-1.5">Impact & Metrics <TrendingUp size={14}/></h4>
-                                    <p className="text-sm text-blue-900 leading-relaxed whitespace-pre-line">{selectedProject.impact}</p>
+                                    <div className="text-sm text-blue-900 leading-relaxed rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.impact }}></div>
                                 </div>
                             )}
-                            <p className="text-gray-600 leading-relaxed whitespace-pre-line text-lg font-light flex-grow">{selectedProject.description}</p>
+                            <div className="text-gray-600 leading-relaxed text-lg font-light flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.description }}></div>
                         </div>
                     </div>
                 </div>
@@ -1712,7 +1757,7 @@ export default function PortfolioPage() {
                                     </div>
                                     <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                                         <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">PORTFOLIO</p>
-                                        <h2 className="text-2xl md:text-4xl font-bold mb-6 leading-snug">{selectedShowcase.title}</h2>
+                                        <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-snug">{selectedShowcase.title}</h2>
                                         
                                         <div className="flex flex-wrap gap-3 mb-8">
                                             {selectedShowcase.link && (
@@ -1729,7 +1774,7 @@ export default function PortfolioPage() {
 
                                         <div className="h-px w-full bg-gray-100 mb-8"></div>
                                         
-                                        <p className="text-gray-600 leading-relaxed whitespace-pre-line text-lg font-light flex-grow">{selectedShowcase.desc}</p>
+                                        <div className="text-gray-600 leading-relaxed text-lg font-light flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedShowcase.desc }}></div>
                                     </div>
                                 </>
                             );
@@ -1781,7 +1826,7 @@ export default function PortfolioPage() {
 
                             {selectedCert.desc && (
                                 <div className="pt-6 border-t border-gray-100">
-                                    <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{selectedCert.desc}</p>
+                                    <div className="text-gray-600 leading-relaxed text-sm rich-text-content" dangerouslySetInnerHTML={{ __html: selectedCert.desc }}></div>
                                 </div>
                             )}
 
@@ -1882,8 +1927,9 @@ export default function PortfolioPage() {
                                 </label>
                             </div>
 
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><textarea required value={pDesc} onChange={e=>setPDesc(e.target.value)} className="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><textarea placeholder="เช่น มีผู้เข้าร่วม 5,000 คน บริหารงบ 100,000 บาท..." value={pImpact} onChange={e=>setPImpact(e.target.value)} className="w-full h-24 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
+                            {/* 🌟 เปลี่ยนเป็น Rich Text Editor */}
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><MiniEditor value={pDesc} onChange={setPDesc} /></div>
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><MiniEditor value={pImpact} onChange={setPImpact} minHeight="80px" /></div>
                             
                             <div className="pt-4 border-t border-gray-100">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">จัดการรูปภาพผลงาน</label>
@@ -1892,7 +1938,7 @@ export default function PortfolioPage() {
                                         {pExistingImages.map((url, i) => (
                                             <div key={i} className="relative w-20 h-20 rounded-lg border border-gray-200 overflow-hidden group">
                                                 <img src={url} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setPExistingImages(pExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={12}/></button>
+                                                <button type="button" onClick={() => setPExistingImages(pExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full shadow-md z-10 hover:bg-red-600 transition"><X size={14}/></button>
                                             </div>
                                         ))}
                                     </div>
@@ -1920,7 +1966,9 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ชื่อเกียรติบัตร / รางวัล</label><input type="text" required value={cTitle} onChange={e=>setCTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Data Storytelling Excellence" /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">หน่วยงานที่ออกให้</label><input type="text" required value={cIssuer} onChange={e=>setCIssuer(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Bootcamp Co." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ปีที่ได้รับ</label><input type="text" required value={cYear} onChange={e=>setCYear(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น 2026" /></div>
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label><textarea rows={3} value={cDesc} onChange={e=>setCDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดเกี่ยวกับเกียรติบัตรนี้..."></textarea></div>
+                            
+                            {/* 🌟 เปลี่ยนเป็น Rich Text Editor */}
+                            <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label><MiniEditor value={cDesc} onChange={setCDesc} minHeight="80px" /></div>
                             
                             <div className="pt-4 border-t border-gray-100">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={14}/> ลิงก์อ้างอิงเพิ่มเติม (ไม่บังคับ)</label>
@@ -1941,7 +1989,7 @@ export default function PortfolioPage() {
                                         {cExistingImages.map((url, i) => (
                                             <div key={i} className="relative w-16 h-16 rounded-md border border-gray-200 overflow-hidden group">
                                                 <img src={url} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setCExistingImages(cExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={10}/></button>
+                                                <button type="button" onClick={() => setCExistingImages(cExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full shadow-md z-10 hover:bg-red-600 transition"><X size={12}/></button>
                                             </div>
                                         ))}
                                     </div>
@@ -1968,7 +2016,6 @@ export default function PortfolioPage() {
                         
                         <form onSubmit={handleSaveShowcase} className="space-y-5">
                             
-                            {/* ส่วนเพิ่มการนำเข้าจากหน้าประวัติ (แสดงเฉพาะตอนสร้างใหม่) */}
                             {!editingShowcase && availableImportOptions.length > 0 && (
                                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-2">
                                     <label className="block text-xs font-bold text-blue-800 mb-2 flex items-center gap-2">
@@ -1984,8 +2031,9 @@ export default function PortfolioPage() {
                             )}
 
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ชื่อผลงาน</label><input type="text" required value={sTitle} onChange={e=>setSTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น โปสเตอร์แคมเปญ" /></div>
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดสั้นๆ (ไม่บังคับ)</label><textarea rows={3} value={sDesc} onChange={e=>setSDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดผลงาน..." /></div>
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">ลิงก์ผลงานภายนอก (หลัก)</label><input type="url" value={sLink} onChange={e=>setSLink(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="https://..." /></div>
+                            
+                            {/* 🌟 เปลี่ยนเป็น Rich Text Editor */}
+                            <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดสั้นๆ (ไม่บังคับ)</label><MiniEditor value={sDesc} onChange={setSDesc} minHeight="80px" /></div>
                             
                             <div className="pt-4 border-t border-gray-100">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={14}/> ลิงก์ผลงานเพิ่มเติม (ไม่บังคับ)</label>
@@ -2006,7 +2054,7 @@ export default function PortfolioPage() {
                                         {sExistingImages.map((url, i) => (
                                             <div key={i} className="relative w-16 h-16 rounded-md border border-gray-200 overflow-hidden group">
                                                 <img src={url} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setSExistingImages(sExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={10}/></button>
+                                                <button type="button" onClick={() => setSExistingImages(sExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-full shadow-md z-10 hover:bg-red-600 transition"><X size={10}/></button>
                                             </div>
                                         ))}
                                     </div>
