@@ -89,6 +89,7 @@ export default function PortfolioPage() {
     const [pDesc, setPDesc] = useState('');
     const [pImpact, setPImpact] = useState(''); const [pTags, setPTags] = useState('');
     const [pFiles, setPFiles] = useState<File[]>([]); const [pExistingImages, setPExistingImages] = useState<string[]>([]);
+    const [pLinks, setPLinks] = useState<{label: string, url: string}[]>([]);
     const [pIsPublished, setPIsPublished] = useState(true);
 
     const [showCertModal, setShowCertModal] = useState(false);
@@ -98,7 +99,7 @@ export default function PortfolioPage() {
     const [cYear, setCYear] = useState('');
     const [cDesc, setCDesc] = useState('');
     const [cFiles, setCFiles] = useState<File[]>([]);
-    const [cExistingImage, setCExistingImage] = useState('');
+    const [cExistingImages, setCExistingImages] = useState<string[]>([]);
 
     const [showShowcaseModal, setShowShowcaseModal] = useState(false);
     const [editingShowcase, setEditingShowcase] = useState<any>(null);
@@ -106,14 +107,15 @@ export default function PortfolioPage() {
     const [sDesc, setSDesc] = useState('');
     const [sLink, setSLink] = useState('');
     const [sFiles, setSFiles] = useState<File[]>([]);
-    const [sExistingImage, setSExistingImage] = useState('');
+    const [sExistingImages, setSExistingImages] = useState<string[]>([]);
 
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginEmail, setLoginEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
     const [loginError, setLoginError] = useState("");
 
-    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    // 🌟 Lightbox Data (รองรับรูปหลายใบ)
+    const [lightboxData, setLightboxData] = useState<{urls: string[], index: number} | null>(null);
     const [isWorksOpen, setIsWorksOpen] = useState(false);
 
     // 🌟 State สำหรับจัดการลากและวาง (Drag and Drop)
@@ -128,7 +130,6 @@ export default function PortfolioPage() {
     const [draggedCertIdx, setDraggedCertIdx] = useState<number | null>(null);
     const [dragOverCertIdx, setDragOverCertIdx] = useState<number | null>(null);
 
-    // 🌟 ล็อกหน้าจอ iPad/Mobile ห้ามเลื่อนเวลากำลังลาก
     useEffect(() => {
         const preventScroll = (e: TouchEvent) => {
             if (draggedProjectIdx !== null || draggedShowcaseIdx !== null || draggedCertIdx !== null) {
@@ -417,11 +418,11 @@ export default function PortfolioPage() {
             setEditingProject(project); setPTitle(project.title); setPCategory(project.category); 
             setPDateMode(project.dateMode || 'single'); setPStartDate(project.startDate || project.date || ''); setPEndDate(project.endDate || '');
             setPDesc(project.description); setPImpact(project.impact || ''); setPTags(project.tags ? project.tags.join(', ') : '');
-            setPExistingImages(project.imageUrls || []); setPIsPublished(project.isPublished !== false);
+            setPExistingImages(project.imageUrls || []); setPLinks(project.links || []); setPIsPublished(project.isPublished !== false);
         } else {
             setEditingProject(null); setPTitle(''); setPCategory('องค์การนิสิต (Student Organization)'); 
             setPDateMode('single'); setPStartDate(''); setPEndDate('');
-            setPDesc(''); setPImpact(''); setPTags(''); setPExistingImages([]); setPIsPublished(true);
+            setPDesc(''); setPImpact(''); setPTags(''); setPExistingImages([]); setPLinks([]); setPIsPublished(true);
         }
         setPFiles([]); setShowProjectModal(true);
     };
@@ -429,12 +430,11 @@ export default function PortfolioPage() {
     const handleSaveProject = async (e: React.FormEvent) => {
         e.preventDefault(); setIsSaving(true);
         try {
-            let finalImageUrls = [...pExistingImages];
+            let finalImageUrls = [...pExistingImages]; // 🌟 เก็บรูปเดิมที่ไม่ได้ลบทิ้งไว้
             if (pFiles.length > 0) {
-                finalImageUrls = [];
                 for (let file of pFiles) {
                     const url = await uploadToCloudinary(file);
-                    if (url) finalImageUrls.push(url);
+                    if (url) finalImageUrls.push(url); // 🌟 เอารูปใหม่ต่อท้ายรูปเดิม
                 }
             }
             let finalDateStr = formatDateStr(pStartDate);
@@ -442,7 +442,6 @@ export default function PortfolioPage() {
                 finalDateStr = `${formatDateStr(pStartDate)} - ${formatDateStr(pEndDate)}`;
             }
 
-            // 🌟 คำนวณหาค่า orderIndex ให้น้อยที่สุดเพื่อไปอยู่ด้านล่าง
             let newOrderIndex = Date.now();
             if (!editingProject && projects.length > 0) {
                 newOrderIndex = Math.min(...projects.map(p => p.orderIndex || 0)) - 1000;
@@ -451,7 +450,8 @@ export default function PortfolioPage() {
             const data = { 
                 title: pTitle, category: pCategory, 
                 dateMode: pDateMode, startDate: pStartDate, endDate: pEndDate, date: finalDateStr, 
-                description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), imageUrls: finalImageUrls, isPublished: pIsPublished,
+                description: pDesc, impact: pImpact, tags: pTags.split(',').map(t => t.trim()), 
+                imageUrls: finalImageUrls, links: pLinks, isPublished: pIsPublished,
                 orderIndex: editingProject ? editingProject.orderIndex : newOrderIndex
             };
 
@@ -486,9 +486,10 @@ export default function PortfolioPage() {
 
     const openCertEditor = (cert: any = null) => {
         if (cert) {
-            setEditingCert(cert); setCTitle(cert.title); setCIssuer(cert.issuer); setCYear(cert.year); setCDesc(cert.desc || ''); setCExistingImage(cert.imageUrl || '');
+            setEditingCert(cert); setCTitle(cert.title); setCIssuer(cert.issuer); setCYear(cert.year); setCDesc(cert.desc || ''); 
+            setCExistingImages(cert.imageUrls || (cert.imageUrl ? [cert.imageUrl] : []));
         } else {
-            setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCDesc(''); setCExistingImage('');
+            setEditingCert(null); setCTitle(''); setCIssuer(''); setCYear(''); setCDesc(''); setCExistingImages([]);
         }
         setCFiles([]); setShowCertModal(true);
     };
@@ -496,20 +497,19 @@ export default function PortfolioPage() {
     const handleSaveCert = async (e: React.FormEvent) => {
         e.preventDefault(); setIsSaving(true);
         try {
-            let imageUrls: string[] = cExistingImage ? [cExistingImage] : [];
+            let finalImageUrls = [...cExistingImages];
             if (cFiles.length > 0) {
                 const uploaded = await Promise.all(cFiles.map(f => uploadToCloudinary(f)));
-                imageUrls = uploaded.filter(Boolean) as string[];
+                finalImageUrls = [...finalImageUrls, ...uploaded.filter(Boolean) as string[]];
             }
-            const finalImageUrl = imageUrls[0] || '';
+            const finalImageUrl = finalImageUrls[0] || '';
 
-            // 🌟 คำนวณหาค่า orderIndex ให้น้อยที่สุดเพื่อไปอยู่ด้านล่าง
             let newOrderIndex = Date.now();
             if (!editingCert && certificates.length > 0) {
                 newOrderIndex = Math.min(...certificates.map(c => c.orderIndex !== undefined ? c.orderIndex : parseInt(c.year || '0') * 1000000)) - 1000;
             }
 
-            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls, orderIndex: editingCert ? editingCert.orderIndex : newOrderIndex };
+            const data = { title: cTitle, issuer: cIssuer, year: cYear, desc: cDesc, imageUrl: finalImageUrl, imageUrls: finalImageUrls, orderIndex: editingCert ? editingCert.orderIndex : newOrderIndex };
             if (editingCert) {
                 await updateDoc(doc(db, "certificates", editingCert.id), data);
                 let updatedCerts = certificates.map(c => c.id === editingCert.id ? { ...c, ...data } : c);
@@ -560,16 +560,17 @@ export default function PortfolioPage() {
         setSDesc(selected.desc || "");
         setSLink(selected.link || "");
         if (selected.imageUrls && selected.imageUrls.length > 0) {
-            setSExistingImage(selected.imageUrls[0]); 
+            setSExistingImages(selected.imageUrls); 
         }
     };
 
     const openShowcaseEditor = (showcase: any = null) => {
         setImportSource(""); 
         if (showcase) {
-            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); setSLink(showcase.link || ''); setSExistingImage(showcase.imageUrl || '');
+            setEditingShowcase(showcase); setSTitle(showcase.title); setSDesc(showcase.desc || ''); setSLink(showcase.link || ''); 
+            setSExistingImages(showcase.imageUrls || (showcase.imageUrl ? [showcase.imageUrl] : []));
         } else {
-            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImage('');
+            setEditingShowcase(null); setSTitle(''); setSDesc(''); setSLink(''); setSExistingImages([]);
         }
         setSFiles([]); setShowShowcaseModal(true);
     };
@@ -577,21 +578,20 @@ export default function PortfolioPage() {
     const handleSaveShowcase = async (e: React.FormEvent) => {
         e.preventDefault(); setIsSaving(true);
         try {
-            let imageUrls: string[] = sExistingImage ? [sExistingImage] : [];
+            let finalImageUrls = [...sExistingImages];
             if (sFiles.length > 0) {
                 const uploaded = await Promise.all(sFiles.map(f => uploadToCloudinary(f)));
-                imageUrls = uploaded.filter(Boolean) as string[];
+                finalImageUrls = [...finalImageUrls, ...uploaded.filter(Boolean) as string[]];
             }
-            const finalImageUrl = imageUrls[0] || '';
+            const finalImageUrl = finalImageUrls[0] || '';
             const textClearDesc = sDesc.replace(/<\/?[^>]+(>|$)/g, "");
             
-            // 🌟 คำนวณหาค่า orderIndex ให้น้อยที่สุดเพื่อไปอยู่ด้านล่าง
             let newOrderIndex = Date.now();
             if (!editingShowcase && showcases.length > 0) {
                 newOrderIndex = Math.min(...showcases.map(s => s.orderIndex !== undefined ? s.orderIndex : (s.createdAt?.toMillis ? s.createdAt.toMillis() : 0))) - 1000;
             }
 
-            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
+            const data = { title: sTitle, desc: textClearDesc, link: sLink, imageUrl: finalImageUrl, imageUrls: finalImageUrls, orderIndex: editingShowcase ? editingShowcase.orderIndex : newOrderIndex };
             if (editingShowcase) {
                 await updateDoc(doc(db, "showcases", editingShowcase.id), data);
                 const updatedShowcases = showcases.map(s => s.id === editingShowcase.id ? { ...s, ...data } : s);
@@ -614,7 +614,7 @@ export default function PortfolioPage() {
     };
 
     // ==========================================
-    // 🌟 ระบบลากและวาง (Drag and Drop Handlers) สลับที่ทันทีเหมือน Widget
+    // 🌟 ระบบลากและวาง (Drag and Drop Handlers) พร้อม Auto-scroll ขอบจอ iPad
     // ==========================================
     const onDragStartProject = (e: React.DragEvent, index: number) => {
         if (!isAdmin || getSectionConfig('projects').sortMode === 'date') return;
@@ -695,7 +695,6 @@ export default function PortfolioPage() {
     };
     // ==========================================
 
-    // 🌟 Project Sorting Logic
     const isDateSort = getSectionConfig('projects').sortMode === 'date';
     let sortedProjects = [...(isAdmin ? projects : projects.filter(p => p.isPublished !== false))];
     if (isDateSort) {
@@ -764,13 +763,29 @@ export default function PortfolioPage() {
     };
 
     return (
-        <div className={`min-h-screen scroll-smooth font-['IBM_Plex_Sans_Thai'] text-[#111827] bg-[#fafafa] ${(selectedProject || selectedShowcase || selectedCert || lightboxImage) ? 'overflow-hidden' : ''}`}>
+        <div className={`min-h-screen scroll-smooth font-['IBM_Plex_Sans_Thai'] text-[#111827] bg-[#fafafa] ${(selectedProject || selectedShowcase || selectedCert || lightboxData) ? 'overflow-hidden' : ''}`}>
             
-            {/* Lightbox ดูรูปแบบเต็มหน้าจอ */}
-            {lightboxImage && (
-                <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-4 sm:p-8" onClick={() => setLightboxImage(null)}>
-                    <button className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-2 rounded-full backdrop-blur transition-all"><X size={28}/></button>
-                    <img src={lightboxImage} alt="Fullscreen" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()} />
+            {/* 🌟 Lightbox ดูรูปขนาดใหญ่เต็มจอ (Slider) */}
+            {lightboxData && (
+                <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-4 sm:p-8" onClick={() => setLightboxData(null)}>
+                    <button className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-2 rounded-full backdrop-blur transition-all z-50"><X size={28}/></button>
+                    
+                    {lightboxData.urls.length > 1 && (
+                        <>
+                            <button onClick={(e) => { e.stopPropagation(); setLightboxData({...lightboxData, index: (lightboxData.index - 1 + lightboxData.urls.length) % lightboxData.urls.length}); }} className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-black/20 hover:bg-black/60 p-3 sm:p-4 rounded-full backdrop-blur transition-all z-50">❮</button>
+                            <button onClick={(e) => { e.stopPropagation(); setLightboxData({...lightboxData, index: (lightboxData.index + 1) % lightboxData.urls.length}); }} className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-black/20 hover:bg-black/60 p-3 sm:p-4 rounded-full backdrop-blur transition-all z-50">❯</button>
+                        </>
+                    )}
+
+                    <img src={lightboxData.urls[lightboxData.index]} alt="Fullscreen" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()} />
+                    
+                    {lightboxData.urls.length > 1 && (
+                        <div className="absolute bottom-6 left-0 right-0 flex justify-center space-x-2 z-50">
+                            {lightboxData.urls.map((_, idx) => (
+                                <div key={idx} onClick={(e) => { e.stopPropagation(); setLightboxData({...lightboxData, index: idx}); }} className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer shadow-md ${idx === lightboxData.index ? 'bg-white w-6' : 'bg-white/50'}`} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -798,9 +813,6 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* ==========================================
-                ⚙️ แถบเครื่องมือตกแต่งสไตล์ (ขวามือ) - Visual Builder
-                ========================================== */}
             {isAdmin && (
                 <div className={`fixed top-0 right-0 h-full w-[350px] bg-white shadow-2xl z-[110] transform transition-transform duration-300 flex flex-col ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                     <div className="p-6 border-b flex justify-between items-center bg-gray-50">
@@ -809,7 +821,6 @@ export default function PortfolioPage() {
                     </div>
 
                     <div className="p-6 flex-grow overflow-y-auto">
-                        
                         {!activeField && (
                             <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4 mb-8">
                                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2"><Layout size={14}/> จัดเรียงเนื้อหาหน้าหลัก</h3>
@@ -956,7 +967,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* 🌟 --- Navigation (ลดความรกด้วย Dropdown และจับตำแหน่ง ScrollSpy) --- 🌟 */}
+            {/* Navigation */}
             <nav className="fixed w-full px-6 py-6 flex justify-between items-center z-50 transition-all duration-300 no-print">
                 <div className="max-w-6xl mx-auto w-full flex justify-between items-center bg-white/80 backdrop-blur-md px-6 py-4 rounded-full shadow-sm border border-gray-100">
                     <Link href="/" className="text-xl font-bold tracking-tighter hover:text-gray-900 transition">SORASAK.</Link>
@@ -1009,7 +1020,6 @@ export default function PortfolioPage() {
                 </div>
             </nav>
 
-            {/* --- Hero Section --- */}
             <header id="about" className="relative min-h-screen flex items-center overflow-hidden">
                 <div className="absolute inset-0 z-0 bg-[#f0f0f0]">
                     {siteData.heroImageUrls && siteData.heroImageUrls.length > 0 && siteData.heroImageUrls.map((url, idx) => (
@@ -1140,6 +1150,16 @@ export default function PortfolioPage() {
                                                         return;
                                                     }
                                                     const touch = e.touches[0];
+                                                    
+                                                    // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
+                                                    const touchY = touch.clientY;
+                                                    const threshold = 100;
+                                                    if (touchY < threshold) {
+                                                        window.scrollBy(0, -15);
+                                                    } else if (window.innerHeight - touchY < threshold) {
+                                                        window.scrollBy(0, 15);
+                                                    }
+
                                                     const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                                     const item = el?.closest('.dnd-project');
                                                     if (item) {
@@ -1208,7 +1228,7 @@ export default function PortfolioPage() {
                                                 key={project.id} 
                                                 className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
                                                     ${isAdmin && !isDateSort ? 'cursor-move hover:shadow-md select-none [-webkit-touch-callout:none]' : 'cursor-pointer hover:shadow-lg'}
-                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-blue-400 border-dashed border-2' : 'border-gray-100'}
                                                 `}
                                                 draggable={isAdmin && !isDateSort}
                                                 onDragStart={(e) => onDragStartProject(e, globalIndex)}
@@ -1230,6 +1250,16 @@ export default function PortfolioPage() {
                                                         return;
                                                     }
                                                     const touch = e.touches[0];
+                                                    
+                                                    // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
+                                                    const touchY = touch.clientY;
+                                                    const threshold = 100;
+                                                    if (touchY < threshold) {
+                                                        window.scrollBy(0, -15);
+                                                    } else if (window.innerHeight - touchY < threshold) {
+                                                        window.scrollBy(0, 15);
+                                                    }
+
                                                     const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                                     const item = el?.closest('.dnd-project');
                                                     if (item) {
@@ -1335,6 +1365,16 @@ export default function PortfolioPage() {
                                                 return;
                                             }
                                             const touch = e.touches[0];
+                                            
+                                            // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
+                                            const touchY = touch.clientY;
+                                            const threshold = 100;
+                                            if (touchY < threshold) {
+                                                window.scrollBy(0, -15);
+                                            } else if (window.innerHeight - touchY < threshold) {
+                                                window.scrollBy(0, 15);
+                                            }
+
                                             const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                             const item = el?.closest('.dnd-showcase');
                                             if (item) {
@@ -1454,6 +1494,16 @@ export default function PortfolioPage() {
                                                 return;
                                             }
                                             const touch = e.touches[0];
+                                            
+                                            // 🌟 ระบบไถขอบจอ iPad อัตโนมัติ (Edge Auto-scrolling)
+                                            const touchY = touch.clientY;
+                                            const threshold = 100;
+                                            if (touchY < threshold) {
+                                                window.scrollBy(0, -15);
+                                            } else if (window.innerHeight - touchY < threshold) {
+                                                window.scrollBy(0, 15);
+                                            }
+
                                             const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                             const item = el?.closest('.dnd-cert');
                                             if (item) {
@@ -1615,7 +1665,7 @@ export default function PortfolioPage() {
                                     <img
                                         src={selectedProject.imageUrls[currentImageIndex]}
                                         className="w-full h-full object-contain drop-shadow-sm transition-opacity duration-500 cursor-zoom-in"
-                                        onClick={() => setLightboxImage(selectedProject.imageUrls[currentImageIndex])}
+                                        onClick={() => setLightboxData({urls: selectedProject.imageUrls, index: currentImageIndex})}
                                     />
                                     {selectedProject.imageUrls.length > 1 && (
                                         <>
@@ -1632,7 +1682,19 @@ export default function PortfolioPage() {
                         <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                             <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest">{selectedProject.category} {selectedProject.date && `| ${selectedProject.date}`}</p>
                             <h2 className="text-3xl md:text-5xl font-bold mb-8 tracking-tight leading-tight">{selectedProject.title}</h2>
-                            {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-8">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
+                            {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
+                            
+                            {/* 🌟 ปุ่มลิงก์ผลงาน */}
+                            {selectedProject.links && selectedProject.links.length > 0 && (
+                                <div className="flex flex-wrap gap-3 mb-8">
+                                    {selectedProject.links.map((link: any, i: number) => (
+                                        <a key={i} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm">
+                                            {link.label || 'ดูลิงก์ผลงาน'} <ExternalLink size={14} />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="h-px w-full bg-gray-100 mb-8"></div>
                             {selectedProject.impact && (
                                 <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl mb-8">
@@ -1675,7 +1737,7 @@ export default function PortfolioPage() {
                                         <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><LucideImage size={20} className="text-blue-500"/> รูปภาพผลงาน ({allImages.length})</h3>
                                         <div className={`grid gap-4 ${allImages.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
                                             {allImages.map((url: string, idx: number) => (
-                                                <div key={idx} className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxImage(url)}>
+                                                <div key={idx} className="aspect-video bg-gray-200 rounded-xl overflow-hidden cursor-zoom-in relative group border border-gray-100 shadow-sm" onClick={() => setLightboxData({urls: allImages, index: idx})}>
                                                     <img src={url} alt={`${selectedShowcase.title}-${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                                                         <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={28}/>
@@ -1698,10 +1760,19 @@ export default function PortfolioPage() {
                         <button onClick={() => setSelectedCert(null)} className="absolute top-6 right-6 z-10 bg-gray-100/80 backdrop-blur-md w-12 h-12 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-200 transition text-xl"><X size={24}/></button>
                         
                         <div className="w-full md:w-1/2 bg-[#fafafa] relative h-[40vh] md:h-auto flex items-center justify-center p-4 md:p-8 border-b md:border-b-0 md:border-r border-gray-100">
-                            {selectedCert.imageUrl ? (
-                                <div className="w-full h-full flex items-center justify-center cursor-zoom-in" onClick={() => setLightboxImage(selectedCert.imageUrl)}>
-                                    <img src={selectedCert.imageUrl} className="max-w-full max-h-full object-contain drop-shadow-md hover:scale-105 transition-transform duration-500" alt={selectedCert.title} />
-                                </div>
+                            {selectedCert.imageUrl || (selectedCert.imageUrls && selectedCert.imageUrls.length > 0) ? (
+                                (() => {
+                                    const allImages = selectedCert.imageUrls?.length > 0 ? selectedCert.imageUrls : [selectedCert.imageUrl];
+                                    return (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-4 overflow-y-auto p-4">
+                                            {allImages.map((url: string, idx: number) => (
+                                                <div key={idx} className="w-full flex-shrink-0 cursor-zoom-in relative group" onClick={() => setLightboxData({urls: allImages, index: idx})}>
+                                                    <img src={url} className="max-w-full max-h-full mx-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-500" alt={selectedCert.title} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()
                             ) : (
                                 <div className="text-gray-400 flex flex-col items-center"><FileText size={48} className="mb-4 opacity-50"/>ไม่มีรูปภาพเกียรติบัตร</div>
                             )}
@@ -1749,7 +1820,6 @@ export default function PortfolioPage() {
                                         <option value="องค์การนิสิต (Student Organization)" />
                                         <option value="กิจกรรมคณะและสาขา" />
                                         <option value="โปรเจกต์วิชาการ" />
-                                        <option value="หกะ" />
                                         {aboutData.categories.map((cat: any) => <option key={cat.id} value={cat.title} />)}
                                     </datalist>
                                 </div>
@@ -1795,6 +1865,19 @@ export default function PortfolioPage() {
                                     </datalist>
                                 </div>
                             </div>
+
+                            {/* 🌟 ส่วนเพิ่มลิงก์ผลงานแบบอิสระ */}
+                            <div className="pt-4 border-t border-gray-100">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><ExternalLink size={14}/> ลิงก์ผลงานเพิ่มเติม (ไม่บังคับ)</label>
+                                {pLinks.map((link, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" placeholder="ชื่อปุ่ม (เช่น GitHub, อ่านข่าว)" value={link.label} onChange={e => { const newLinks=[...pLinks]; newLinks[i].label=e.target.value; setPLinks(newLinks); }} className="w-1/3 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" />
+                                        <input type="url" placeholder="URL ลิงก์ปลายทาง" value={link.url} onChange={e => { const newLinks=[...pLinks]; newLinks[i].url=e.target.value; setPLinks(newLinks); }} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm" />
+                                        <button type="button" onClick={() => setPLinks(pLinks.filter((_, idx) => idx !== i))} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition"><X size={18}/></button>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => setPLinks([...pLinks, {label: '', url: ''}])} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-2 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition"><Plus size={14}/> เพิ่มลิงก์</button>
+                            </div>
                             
                             <div className="flex items-center justify-between bg-blue-50 p-4 rounded-xl border border-blue-100">
                                 <div><h4 className="text-sm font-bold text-blue-900">Defensive Status</h4><p className="text-xs text-blue-700 mt-1">ซ่อนไว้ก่อนหากยังจัดหน้าไม่เสร็จ</p></div>
@@ -1806,7 +1889,23 @@ export default function PortfolioPage() {
 
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">รายละเอียดงาน</label><textarea required value={pDesc} onChange={e=>setPDesc(e.target.value)} className="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">ตัวชี้วัดความสำเร็จ (Impact & Metrics)</label><textarea placeholder="เช่น มีผู้เข้าร่วม 5,000 คน บริหารงบ 100,000 บาท..." value={pImpact} onChange={e=>setPImpact(e.target.value)} className="w-full h-24 bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-gray-900 text-sm"></textarea></div>
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">เพิ่มรูปภาพ (หลายรูปได้)</label><input type="file" accept="image/*" multiple onChange={(e) => setPFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 cursor-pointer" /></div>
+                            
+                            {/* 🌟 ระบบจัดการรูปภาพเก่า */}
+                            <div className="pt-4 border-t border-gray-100">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">จัดการรูปภาพผลงาน</label>
+                                {pExistingImages.length > 0 && (
+                                    <div className="flex flex-wrap gap-3 mb-3">
+                                        {pExistingImages.map((url, i) => (
+                                            <div key={i} className="relative w-20 h-20 rounded-lg border border-gray-200 overflow-hidden group">
+                                                <img src={url} className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => setPExistingImages(pExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={12}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <input type="file" accept="image/*" multiple onChange={(e) => setPFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 cursor-pointer" />
+                                {pFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกรูปใหม่เพิ่ม {pFiles.length} รูป</p>}
+                            </div>
                             
                             <div className="flex gap-4 pt-4 border-t border-gray-100">
                                 {editingProject && <button type="button" onClick={() => handleDeleteProject(editingProject.id)} className="px-6 py-4 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition">ลบกิจกรรม</button>}
@@ -1828,12 +1927,24 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">หน่วยงานที่ออกให้</label><input type="text" required value={cIssuer} onChange={e=>setCIssuer(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น Bootcamp Co." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ปีที่ได้รับ</label><input type="text" required value={cYear} onChange={e=>setCYear(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น 2026" /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label><textarea rows={3} value={cDesc} onChange={e=>setCDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดเกี่ยวกับเกียรติบัตรนี้..."></textarea></div>
+                            
+                            {/* 🌟 ระบบจัดการรูปภาพเก่า */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพ (เพิ่มได้มากกว่า 1 ภาพ)</label>
+                                <label className="block text-xs font-bold text-gray-500 mb-2">จัดการรูปภาพเกียรติบัตร</label>
+                                {cExistingImages.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {cExistingImages.map((url, i) => (
+                                            <div key={i} className="relative w-16 h-16 rounded-md border border-gray-200 overflow-hidden group">
+                                                <img src={url} className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => setCExistingImages(cExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={10}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 <input type="file" accept="image/*" multiple onChange={(e) => setCFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
-                                {cFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกแล้ว {cFiles.length} รูป</p>}
-                                {cExistingImage && cFiles.length === 0 && <p className="text-xs text-blue-500 mt-2">มีรูปภาพเดิมอยู่แล้ว</p>}
+                                {cFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกรูปใหม่เพิ่ม {cFiles.length} รูป</p>}
                             </div>
+
                             <div className="flex gap-3 pt-4 border-t border-gray-100">
                                 {editingCert && <button type="button" onClick={() => handleDeleteCert(editingCert.id)} className="px-4 py-3 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition text-sm">ลบ</button>}
                                 <button type="submit" disabled={isSaving} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition flex justify-center items-center gap-2 text-sm">{isSaving ? <><Loader size={18} className="animate-spin"/> กำลังบันทึก...</> : <><Save size={18}/> บันทึกเกียรติบัตร</>}</button>
@@ -1870,12 +1981,24 @@ export default function PortfolioPage() {
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ชื่อผลงาน</label><input type="text" required value={sTitle} onChange={e=>setSTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="เช่น โปสเตอร์แคมเปญ" /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">รายละเอียดสั้นๆ (ไม่บังคับ)</label><textarea rows={3} value={sDesc} onChange={e=>setSDesc(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="อธิบายรายละเอียดผลงาน..." /></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1">ลิงก์ผลงานภายนอก (ไม่บังคับ)</label><input type="url" value={sLink} onChange={e=>setSLink(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-500 text-sm" placeholder="https://..." /></div>
+                            
+                            {/* 🌟 ระบบจัดการรูปภาพเก่า */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">อัปโหลดรูปภาพผลงาน (เพิ่มได้มากกว่า 1 ภาพ)</label>
+                                <label className="block text-xs font-bold text-gray-500 mb-2">จัดการรูปภาพผลงาน</label>
+                                {sExistingImages.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {sExistingImages.map((url, i) => (
+                                            <div key={i} className="relative w-16 h-16 rounded-md border border-gray-200 overflow-hidden group">
+                                                <img src={url} className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => setSExistingImages(sExistingImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={10}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 <input type="file" accept="image/*" multiple onChange={(e) => setSFiles(Array.from(e.target.files || []))} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer" />
-                                {sFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกแล้ว {sFiles.length} รูป</p>}
-                                {sExistingImage && sFiles.length === 0 && <p className="text-xs text-blue-500 mt-2">มีรูปภาพเดิมอยู่แล้ว</p>}
+                                {sFiles.length > 0 && <p className="text-xs text-blue-600 mt-2">เลือกรูปใหม่เพิ่ม {sFiles.length} รูป</p>}
                             </div>
+
                             <div className="flex gap-3 pt-4 border-t border-gray-100">
                                 {editingShowcase && <button type="button" onClick={() => handleDeleteShowcase(editingShowcase.id)} className="px-4 py-3 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition text-sm">ลบ</button>}
                                 <button type="submit" disabled={isSaving} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition flex justify-center items-center gap-2 text-sm">{isSaving ? <><Loader size={18} className="animate-spin"/> กำลังบันทึก...</> : <><Save size={18}/> บันทึกผลงาน</>}</button>
