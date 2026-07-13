@@ -345,7 +345,6 @@ export default function PortfolioPage() {
         }
     };
 
-    // 🌟 อัปเกรดระบบ Paste ให้แปลงการเว้นบรรทัดเป็น <p> ย่อหน้าสวยงาม และล้างโค้ดประหลาดทิ้ง
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
         const text = e.clipboardData.getData('text/plain');
@@ -799,14 +798,26 @@ export default function PortfolioPage() {
             
             {/* 🌟 สไตล์รองรับ Rich Text Editor ในหน้าต่างโชว์ผลงาน */}
             <style dangerouslySetInnerHTML={{__html: `
-                .rich-text-content p { margin-bottom: 1rem; line-height: 1.7; }
-                .rich-text-content ul, .rich-text-content ol { margin-bottom: 1rem; line-height: 1.7; padding-left: 1.5rem !important; }
-                .rich-text-content ul { list-style-type: disc !important; }
-                .rich-text-content ol { list-style-type: decimal !important; }
-                .rich-text-content li { margin-bottom: 0.5rem; }
-                .rich-text-content b, .rich-text-content strong { font-weight: bold !important; color: #111827; }
-                .rich-text-content i, .rich-text-content em { font-style: italic !important; }
-                .rich-text-content u { text-decoration: underline !important; }
+                .rich-text-content {
+                    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+                    font-size: 16px !important;
+                    line-height: 1.8 !important;
+                    color: #4b5563 !important;
+                }
+                .rich-text-content * {
+                    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+                    font-size: 16px !important;
+                    line-height: 1.8 !important;
+                    background-color: transparent !important;
+                }
+                .rich-text-content p { margin-bottom: 1rem !important; }
+                .rich-text-content ul, .rich-text-content ol { margin-bottom: 1rem !important; padding-left: 1.5rem !important; }
+                .rich-text-content ul, .rich-text-content ul * { list-style-type: disc !important; }
+                .rich-text-content ol, .rich-text-content ol * { list-style-type: decimal !important; }
+                .rich-text-content li, .rich-text-content li * { margin-bottom: 0.25rem !important; }
+                .rich-text-content b, .rich-text-content strong, .rich-text-content b *, .rich-text-content strong * { font-weight: 700 !important; color: #111827 !important; }
+                .rich-text-content i, .rich-text-content em, .rich-text-content i *, .rich-text-content em * { font-style: italic !important; }
+                .rich-text-content u, .rich-text-content u * { text-decoration: underline !important; }
             `}} />
 
             {/* Lightbox ดูรูปขนาดใหญ่เต็มจอ (Slider) */}
@@ -1265,7 +1276,7 @@ export default function PortfolioPage() {
                                                 key={project.id} 
                                                 className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
                                                     ${isAdmin && !isDateSort ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
-                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-gray-100' : 'border-gray-100'}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
                                                 `}
                                                 draggable={isAdmin && !isDateSort}
                                                 onDragStart={(e) => onDragStartProject(e, globalIndex)}
