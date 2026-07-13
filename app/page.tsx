@@ -345,18 +345,20 @@ export default function PortfolioPage() {
         }
     };
 
+    // 🌟 อัปเกรดระบบ Paste ให้แปลงการเว้นบรรทัดเป็น <p> ย่อหน้าสวยงาม และล้างโค้ดประหลาดทิ้ง
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
-        let html = e.clipboardData.getData('text/html');
-        if (html) {
-            html = html.replace(/<[^>]*>?/gm, (match) => {
-                return match.replace(/ (class|style|id|dir)="[^"]*"/gi, '').replace(/ (class|style|id|dir)='[^']*'/gi, '');
-            });
-            html = html.replace(/<\/?(span|font|div|table|tbody|tr|td)[^>]*>/gi, '');
-            document.execCommand('insertHTML', false, html);
-        } else {
-            const text = e.clipboardData.getData('text/plain');
-            const formattedText = text.replace(/\n/g, '<br>');
+        const text = e.clipboardData.getData('text/plain');
+        if (text) {
+            const safeText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const formattedText = safeText
+                .split(/\r?\n\r?\n/)
+                .map(paragraph => {
+                    const lines = paragraph.split(/\r?\n/);
+                    return `<p>${lines.join('<br/>')}</p>`;
+                })
+                .join('');
+                
             document.execCommand('insertHTML', false, formattedText);
         }
     };
@@ -1263,7 +1265,7 @@ export default function PortfolioPage() {
                                                 key={project.id} 
                                                 className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-project
                                                     ${isAdmin && !isDateSort ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
-                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
+                                                    ${draggedProjectIdx === globalIndex ? 'opacity-40 scale-[0.98] border-gray-100' : 'border-gray-100'}
                                                 `}
                                                 draggable={isAdmin && !isDateSort}
                                                 onDragStart={(e) => onDragStartProject(e, globalIndex)}
@@ -1339,6 +1341,7 @@ export default function PortfolioPage() {
                                                 </div>
                                                 <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                                     <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
+                                                    {/* 🌟 สีหมวดหมู่กลับเป็นเทาตามเดิม */}
                                                     {project.category && <p className="text-[11px] text-gray-400 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
                                                     {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{stripHtml(project.description)}</p>}
                                                 </div>
@@ -1378,7 +1381,7 @@ export default function PortfolioPage() {
                                         key={showcase.id} 
                                         className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-showcase
                                             ${isAdmin ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
-                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
+                                            ${draggedShowcaseIdx === index ? 'opacity-40 scale-[0.98] border-gray-100' : 'border-gray-100'}
                                         `}
                                         draggable={isAdmin}
                                         onDragStart={(e) => onDragStartShowcase(e, index)}
@@ -1498,7 +1501,7 @@ export default function PortfolioPage() {
                                         key={cert.id} 
                                         className={`bg-white border rounded-[1.5rem] p-4 shadow-sm transition-all relative group flex flex-col dnd-cert
                                             ${isAdmin ? 'cursor-move select-none [-webkit-touch-callout:none] hover:shadow-md' : 'cursor-pointer hover:shadow-lg'}
-                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98]' : 'border-gray-100'}
+                                            ${draggedCertIdx === index ? 'opacity-40 scale-[0.98] border-gray-100' : 'border-gray-100'}
                                         `}
                                         draggable={isAdmin}
                                         onDragStart={(e) => onDragStartCert(e, index)}
@@ -1726,7 +1729,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* Modal ผลงาน (Showcase - สไตล์แยก 2 ฝั่ง ซ้าย/ขวา เหมือน Projects) */}
+            {/* 🌟 Modal ผลงาน (Showcase - สไตล์แยก 2 ฝั่ง ซ้าย/ขวา เหมือน Projects) */}
             {selectedShowcase && !showShowcaseModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-7xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1788,7 +1791,7 @@ export default function PortfolioPage() {
                 </div>
             )}
 
-            {/* Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
+            {/* 🌟 Modal เกียรติบัตร (Certificates - สไตล์แยกฝั่งเหมือนกิจกรรม) */}
             {selectedCert && !showCertModal && (
                 <div className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
                     <div className="bg-white w-full h-full md:h-[90vh] md:rounded-[2rem] md:max-w-6xl overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-100">
@@ -1955,7 +1958,7 @@ export default function PortfolioPage() {
                             
                             <div className="flex gap-4 pt-4 border-t border-gray-100">
                                 {editingProject && <button type="button" onClick={() => handleDeleteProject(editingProject.id)} className="px-6 py-4 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition">ลบกิจกรรม</button>}
-                                <button type="submit" disabled={isSaving} className="flex-1 bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition flex justify-center items-center gap-2">{isSaving ? <><Loader size={18} className="animate-spin"/> กำลังบันทึก...</> : <><Save size={18}/> บันทึกกิจกรรม</>}</button>
+                                <button type="submit" disabled={isSaving} className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition flex justify-center items-center gap-2">{isSaving ? <><Loader size={18} className="animate-spin"/> กำลังบันทึก...</> : <><Save size={18}/> บันทึกกิจกรรม</>}</button>
                             </div>
                         </form>
                     </div>
