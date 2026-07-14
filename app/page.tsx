@@ -28,9 +28,13 @@ const stripHtml = (html: string) => {
 const MiniEditor = ({ value, onChange, minHeight = "120px" }: { value: string, onChange: (v: string) => void, minHeight?: string }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     
+    // 🌟 แก้ไขปัญหาเคอร์เซอร์เด้ง / ลบ-เว้นวรรคไม่ได้
     useEffect(() => {
         if (editorRef.current && value !== editorRef.current.innerHTML) {
-            editorRef.current.innerHTML = value || '';
+            // เช็คว่าถ้าเราไม่ได้กำลังจิ้มพิมพ์อยู่ในกล่องนี้ ถึงจะอัปเดตข้อมูล (ป้องกันเคอร์เซอร์เด้งกลับ)
+            if (document.activeElement !== editorRef.current) {
+                editorRef.current.innerHTML = value || '';
+            }
         }
     }, [value]);
 
@@ -230,12 +234,26 @@ export default function PortfolioPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const siteDoc = await getDoc(doc(db, "settings", "homepage"));
+                const [
+                    siteDoc,
+                    aboutDoc,
+                    profileDoc,
+                    projectsSnap,
+                    certsSnap,
+                    showcasesSnap
+                ] = await Promise.all([
+                    getDoc(doc(db, "settings", "homepage")),
+                    getDoc(doc(db, "settings", "aboutPageV2")),
+                    getDoc(doc(db, "settings", "userProfile")),
+                    getDocs(query(collection(db, "projects"))),
+                    getDocs(query(collection(db, "certificates"))),
+                    getDocs(query(collection(db, "showcases")))
+                ]);
+
                 if (siteDoc.exists()) {
                     const data = siteDoc.data() as any;
                     setSiteData(prev => ({ ...prev, ...data, heroImageUrls: data.heroImageUrls || (data.heroImageUrl ? [data.heroImageUrl] : []) }));
                     setSiteStyles(data.siteStyles || {});
-                    
                     if (data.sectionsConfig) {
                         setSectionsConfig({
                             projects: { visible: true, order: 1, limit: 10, sortMode: 'manual', ...data.sectionsConfig.projects },
@@ -245,7 +263,6 @@ export default function PortfolioPage() {
                     }
                 }
 
-                const aboutDoc = await getDoc(doc(db, "settings", "aboutPageV2"));
                 if (aboutDoc.exists()) {
                     const aboutConfig = aboutDoc.data() as any;
                     setAboutData({
@@ -255,18 +272,13 @@ export default function PortfolioPage() {
                     });
                 }
 
-                const profileDoc = await getDoc(doc(db, "settings", "userProfile"));
                 if (profileDoc.exists()) setProfileData(profileDoc.data());
 
-                const q = query(collection(db, "projects"));
-                const querySnapshot = await getDocs(q);
-                const loadedProjects = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), imageUrls: doc.data().imageUrls || [] }));
+                const loadedProjects = projectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), imageUrls: doc.data().imageUrls || [] }));
                 loadedProjects.sort((a: any, b: any) => (b.orderIndex || 0) - (a.orderIndex || 0));
                 setProjects(loadedProjects);
 
-                const certQ = query(collection(db, "certificates"));
-                const certSnap = await getDocs(certQ);
-                const loadedCerts = certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const loadedCerts = certsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 loadedCerts.sort((a: any, b: any) => {
                     const orderA = a.orderIndex !== undefined ? a.orderIndex : parseInt(a.year || '0') * 1000000;
                     const orderB = b.orderIndex !== undefined ? b.orderIndex : parseInt(b.year || '0') * 1000000;
@@ -274,9 +286,7 @@ export default function PortfolioPage() {
                 });
                 setCertificates(loadedCerts);
 
-                const showcaseQ = query(collection(db, "showcases"));
-                const showcaseSnap = await getDocs(showcaseQ);
-                const loadedShowcases = showcaseSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const loadedShowcases = showcasesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 loadedShowcases.sort((a: any, b: any) => {
                     const orderA = a.orderIndex !== undefined ? a.orderIndex : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
                     const orderB = b.orderIndex !== undefined ? b.orderIndex : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
@@ -284,7 +294,11 @@ export default function PortfolioPage() {
                 });
                 setShowcases(loadedShowcases);
 
-            } catch (error) { console.error(error); } finally { setLoading(false); }
+            } catch (error) { 
+                console.error(error); 
+            } finally { 
+                setLoading(false); 
+            }
         };
         fetchData();
     }, []);
@@ -793,29 +807,38 @@ export default function PortfolioPage() {
         };
     };
 
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
+                <div className="flex flex-col items-center gap-4 text-gray-400">
+                    <Loader size={32} className="animate-spin text-gray-900" />
+                    <p className="text-sm font-medium tracking-widest uppercase">Loading Data...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`min-h-screen scroll-smooth font-['IBM_Plex_Sans_Thai'] text-[#111827] bg-[#fafafa] ${(selectedProject || selectedShowcase || selectedCert || lightboxData) ? 'overflow-hidden' : ''}`}>
             
-            {/* 🌟 สไตล์รองรับ Rich Text Editor ในหน้าต่างโชว์ผลงาน */}
+            {/* 🌟 สไตล์บังคับ (Override) สำหรับ Rich Text Editor ทั้งเว็บ เพื่อล้างสีจางและจัดฟอนต์ */}
             <style dangerouslySetInnerHTML={{__html: `
-                .rich-text-content {
+                .rich-text-content, .rich-text-content * {
                     font-family: 'IBM Plex Sans Thai', sans-serif !important;
                     font-size: 16px !important;
                     line-height: 1.8 !important;
-                    color: #4b5563 !important;
-                }
-                .rich-text-content * {
-                    font-family: 'IBM Plex Sans Thai', sans-serif !important;
-                    font-size: 16px !important;
-                    line-height: 1.8 !important;
-                    background-color: transparent !important;
+                    color: #4b5563 !important; /* บังคับให้เป็นสีเทาเข้ม แก้ปัญหาสีจาง */
+                    background-color: transparent !important; /* ล้างพื้นหลังที่ติดมาจากการ copy */
                 }
                 .rich-text-content p { margin-bottom: 1rem !important; }
                 .rich-text-content ul, .rich-text-content ol { margin-bottom: 1rem !important; padding-left: 1.5rem !important; }
                 .rich-text-content ul, .rich-text-content ul * { list-style-type: disc !important; }
                 .rich-text-content ol, .rich-text-content ol * { list-style-type: decimal !important; }
                 .rich-text-content li, .rich-text-content li * { margin-bottom: 0.25rem !important; }
-                .rich-text-content b, .rich-text-content strong, .rich-text-content b *, .rich-text-content strong * { font-weight: 700 !important; color: #111827 !important; }
+                .rich-text-content b, .rich-text-content strong, .rich-text-content b *, .rich-text-content strong * { 
+                    font-weight: 700 !important; 
+                    color: #111827 !important; /* ตัวหนาบังคับให้เป็นสีดำเข้ม */
+                }
                 .rich-text-content i, .rich-text-content em, .rich-text-content i *, .rich-text-content em * { font-style: italic !important; }
                 .rich-text-content u, .rich-text-content u * { text-decoration: underline !important; }
             `}} />
@@ -1352,7 +1375,6 @@ export default function PortfolioPage() {
                                                 </div>
                                                 <div className="flex-grow flex flex-col justify-between pointer-events-none">
                                                     <h4 className="font-bold text-gray-900 mb-2 text-base leading-snug line-clamp-2">{project.title}</h4>
-                                                    {/* 🌟 สีหมวดหมู่กลับเป็นเทาตามเดิม */}
                                                     {project.category && <p className="text-[11px] text-gray-400 font-bold mb-2 uppercase tracking-wide">{project.category}</p>}
                                                     {project.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{stripHtml(project.description)}</p>}
                                                 </div>
@@ -1379,7 +1401,7 @@ export default function PortfolioPage() {
                                 {isAdmin && (
                                     <div className="flex gap-2">
                                         <span className="hidden md:flex bg-gray-50 text-gray-500 px-3 py-2 rounded-full text-xs font-medium border border-gray-200 items-center gap-2"><GripHorizontal size={14}/> กดค้างแล้วลากเพื่อจัดเรียง</span>
-                                        <button onClick={() => openShowcaseEditor()} className="flex-1 md:flex-none bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2 border border-gray-200 shadow-sm">
+                                        <button onClick={() => openShowcaseEditor()} className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition flex items-center gap-2 border border-gray-200 shadow-sm">
                                             <Plus size={16}/> เพิ่มผลงาน
                                         </button>
                                     </div>
@@ -1711,7 +1733,6 @@ export default function PortfolioPage() {
                         </div>
                         <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                             <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest">{selectedProject.category} {selectedProject.date && `| ${selectedProject.date}`}</p>
-                            {/* 🌟 ปรับขนาดหัวข้อให้อ่านง่าย */}
                             <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-snug text-gray-900">{selectedProject.title}</h2>
                             {selectedProject.tags?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">{selectedProject.tags.map((tag: string, i: number) => (<span key={i} className="text-xs border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-medium">{tag}</span>))}</div>}
                             
@@ -1733,7 +1754,6 @@ export default function PortfolioPage() {
                                     <div className="text-sm text-blue-900 leading-relaxed rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.impact }}></div>
                                 </div>
                             )}
-                            {/* 🌟 ปรับสไตล์คำบรรยายให้อ่านง่าย */}
                             <div className="text-gray-600 text-sm md:text-base flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedProject.description }}></div>
                         </div>
                     </div>
@@ -1774,7 +1794,6 @@ export default function PortfolioPage() {
                                     </div>
                                     <div className="w-full md:w-2/5 p-8 md:p-16 overflow-y-auto max-h-[50vh] md:max-h-full bg-white flex flex-col">
                                         <p className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">PORTFOLIO</p>
-                                        {/* 🌟 ปรับขนาดหัวข้อให้อ่านง่าย */}
                                         <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-snug text-gray-900">{selectedShowcase.title}</h2>
                                         
                                         <div className="flex flex-wrap gap-3 mb-8">
@@ -1792,7 +1811,6 @@ export default function PortfolioPage() {
 
                                         <div className="h-px w-full bg-gray-100 mb-8"></div>
                                         
-                                        {/* 🌟 ปรับสไตล์คำบรรยายให้อ่านง่าย */}
                                         <div className="text-gray-600 text-sm md:text-base flex-grow rich-text-content" dangerouslySetInnerHTML={{ __html: selectedShowcase.desc }}></div>
                                     </div>
                                 </>
@@ -1829,7 +1847,6 @@ export default function PortfolioPage() {
                         
                         <div className="w-full md:w-1/2 p-8 md:p-16 overflow-y-auto max-h-[60vh] md:max-h-full bg-white flex flex-col justify-center">
                             <p className="text-sm font-semibold text-blue-600 mb-3 uppercase tracking-widest flex items-center gap-2"><Award size={16}/> เกียรติบัตรและรางวัล</p>
-                            {/* 🌟 ปรับขนาดหัวข้อให้อ่านง่าย */}
                             <h2 className="text-2xl md:text-3xl font-bold mb-6 leading-snug text-gray-900">{selectedCert.title}</h2>
                             
                             <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-8 space-y-4">
@@ -1846,7 +1863,6 @@ export default function PortfolioPage() {
 
                             {selectedCert.desc && (
                                 <div className="pt-6 border-t border-gray-100">
-                                    {/* 🌟 ปรับสไตล์คำบรรยายให้อ่านง่าย */}
                                     <div className="text-gray-600 text-sm md:text-base rich-text-content" dangerouslySetInnerHTML={{ __html: selectedCert.desc }}></div>
                                 </div>
                             )}
